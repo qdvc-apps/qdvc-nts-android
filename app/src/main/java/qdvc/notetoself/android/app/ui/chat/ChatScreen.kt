@@ -10,7 +10,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -20,11 +24,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Sell
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -59,8 +65,10 @@ import androidx.compose.ui.unit.sp
 import qdvc.notetoself.android.app.model.ChatMessage
 import qdvc.notetoself.android.app.model.Note
 import qdvc.notetoself.android.app.model.Persona
+import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.QuotedMessage
 import qdvc.notetoself.android.app.ui.components.topOnlyInsets
+import qdvc.notetoself.android.app.ui.edit.CategoryPickerScreen
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -103,6 +111,7 @@ fun ChatScreen(
     onEditMessage: (Int, String) -> Unit,
     onSetPersona: (Persona) -> Unit,
     onToggleClosed: () -> Unit,
+    onUpdateMeta: (String, Category) -> Unit,
 ) {
     var input by remember { mutableStateOf("") }
     var menuOpen by remember { mutableStateOf(false) }
@@ -110,6 +119,9 @@ fun ChatScreen(
     var editing by remember { mutableStateOf<Int?>(null) }
     var editText by remember { mutableStateOf("") }
     var replyTo by remember { mutableStateOf<QuotedMessage?>(null) }
+    var showRename by remember { mutableStateOf(false) }
+    var renameText by remember { mutableStateOf(note.title) }
+    var showCategoryPicker by remember { mutableStateOf(false) }
 
     val hashViolation = input.split("\n").any { it.trimStart().startsWith("#") }
 
@@ -149,6 +161,16 @@ fun ChatScreen(
                         Icon(Icons.Filled.MoreVert, contentDescription = "Menu")
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Rename chat") },
+                            leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                            onClick = { menuOpen = false; renameText = note.title; showRename = true },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Set category") },
+                            leadingIcon = { Icon(Icons.Filled.Sell, contentDescription = null) },
+                            onClick = { menuOpen = false; showCategoryPicker = true },
+                        )
                         DropdownMenuItem(
                             text = { Text(if (note.chatClosed) "Reopen chat" else "Close chat") },
                             leadingIcon = {
@@ -193,7 +215,7 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             item { Box(Modifier.size(8.dp)) }
             items(note.messages.size) { index ->
@@ -235,6 +257,39 @@ fun ChatScreen(
             dismissButton = { TextButton(onClick = { editing = null }) { Text("Cancel") } },
         )
     }
+
+    // Rename dialog.
+    if (showRename) {
+        AlertDialog(
+            onDismissRequest = { showRename = false },
+            title = { Text("Rename chat") },
+            text = {
+                OutlinedTextField(
+                    value = renameText,
+                    onValueChange = { renameText = it },
+                    singleLine = true,
+                    isError = renameText.isBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { onUpdateMeta(renameText, note.category); showRename = false },
+                    enabled = renameText.isNotBlank(),
+                ) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { showRename = false }) { Text("Cancel") } },
+        )
+    }
+
+    // Category picker overlay (reuses the shared edit-package picker).
+    if (showCategoryPicker) {
+        CategoryPickerScreen(
+            selected = note.category,
+            onPick = { c -> onUpdateMeta(note.title, c); showCategoryPicker = false },
+            onBack = { showCategoryPicker = false },
+        )
+    }
 }
 
 @Composable
@@ -250,9 +305,9 @@ private fun MessageBubble(
     val bubbleColor = if (mine) senderColor else MaterialTheme.colorScheme.surfaceVariant
     val textColor = if (mine) Color.White else MaterialTheme.colorScheme.onBackground
     val shape = RoundedCornerShape(
-        topStart = 16.dp, topEnd = 16.dp,
-        bottomStart = if (mine) 16.dp else 4.dp,
-        bottomEnd = if (mine) 4.dp else 16.dp,
+        topStart = 4.dp, topEnd = 4.dp,
+        bottomStart = if (mine) 4.dp else 1.dp,
+        bottomEnd = if (mine) 1.dp else 4.dp,
     )
 
     // Swipe-left-to-reply: track horizontal drag and fire onReply past a threshold.
@@ -286,7 +341,7 @@ private fun MessageBubble(
                 .widthIn(max = 300.dp)
                 .background(bubbleColor, shape)
                 .clickable { onEdit() }
-                .padding(10.dp),
+                .padding(3.dp),
         ) {
             if (!mine) {
                 Text(
@@ -296,7 +351,7 @@ private fun MessageBubble(
                     color = senderColor,
                 )
             }
-            msg.quoted?.let { QuotedBlock(it, mine, fontSize) }
+            msg.quoted?.let { QuotedBlock(it, fontSize) }
             if (msg.imageUri != null) ChatImage(msg.imageUri)
             if (msg.text.isNotBlank()) {
                 Text(msg.text, fontSize = fontSize.sp, color = textColor)
@@ -312,36 +367,48 @@ private fun MessageBubble(
 }
 
 @Composable
-private fun QuotedBlock(q: QuotedMessage, mineParent: Boolean, fontSize: Float) {
+private fun QuotedBlock(q: QuotedMessage, fontSize: Float) {
     val accent = personaColor(q.personaKey)
-    val onParent = if (mineParent) Color.White else MaterialTheme.colorScheme.onBackground
+    val lightAccent = lighten(accent, 0.6f)
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(bottom = 6.dp)
-            .background(onParent.copy(alpha = 0.10f), RoundedCornerShape(6.dp)),
+            .padding(bottom = 4.dp)
+            // Semi-transparent DARK scrim behind the quote (independent of bubble colour).
+            .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(4.dp)),
     ) {
         Box(
             Modifier
                 .padding(vertical = 2.dp)
                 .size(width = 3.dp, height = 34.dp)
-                .background(accent, RoundedCornerShape(2.dp)),
+                .background(lightAccent, RoundedCornerShape(2.dp)),
         )
         Column(Modifier.padding(start = 8.dp, top = 4.dp, bottom = 4.dp, end = 8.dp)) {
             Text(
                 q.personaKey,
                 fontSize = (fontSize - 4).sp,
                 fontWeight = FontWeight.Bold,
-                color = accent,
+                color = lightAccent,
             )
             Text(
                 q.text.ifBlank { "(no text)" },
                 fontSize = (fontSize - 3).sp,
-                color = onParent.copy(alpha = 0.8f),
+                color = lightAccent.copy(alpha = 0.85f),
                 maxLines = 2,
             )
         }
     }
+}
+
+/** Blend [c] toward white by [fraction] (0 = unchanged, 1 = white) for a lighter shade. */
+private fun lighten(c: Color, fraction: Float): Color {
+    val f = fraction.coerceIn(0f, 1f)
+    return Color(
+        red = c.red + (1f - c.red) * f,
+        green = c.green + (1f - c.green) * f,
+        blue = c.blue + (1f - c.blue) * f,
+        alpha = c.alpha,
+    )
 }
 
 @Composable
@@ -394,11 +461,13 @@ private fun MessageComposer(
     onAttach: () -> Unit,
     onSend: () -> Unit,
 ) {
-    // imePadding lifts the whole composer above the on-screen keyboard.
+    // Lift the composer by only the part of the keyboard that exceeds the navigation bar,
+    // since the composer already sits above the app's bottom nav bar (plain imePadding would
+    // double-count the nav-bar height and leave a gap between the keyboard and the toolbar).
     Column(
         Modifier
             .background(MaterialTheme.colorScheme.surface)
-            .imePadding(),
+            .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.navigationBars)),
     ) {
         if (replyTo != null) {
             Row(

@@ -345,6 +345,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Changes the open chat's title and/or category (may rename the folder). */
+    fun updateChatMeta(newTitle: String, newCategory: Category) {
+        val note = _currentNote.value ?: return
+        if (note.kind != NoteKind.CHAT) return
+        val title = newTitle.trim()
+        if (title.isBlank()) return
+        val oldFolderUri = note.folderUri
+        viewModelScope.launch {
+            val updated = notesRepo.updateChatMeta(note, title, newCategory) ?: return@launch
+            if (updated.folderUri != oldFolderUri) {
+                index.onRenamedOrDeleted(note.workspaceUri, oldFolderUri)
+                _openNotes.value = _openNotes.value.map {
+                    if (it.folderUri == oldFolderUri)
+                        it.copy(
+                            folderUri = updated.folderUri,
+                            folderName = updated.folderName,
+                            categoryKey = updated.category.key,
+                        )
+                    else it
+                }
+            } else {
+                _openNotes.value = _openNotes.value.map {
+                    if (it.folderUri == updated.folderUri)
+                        it.copy(folderName = updated.folderName, categoryKey = updated.category.key)
+                    else it
+                }
+            }
+            _currentNote.value = updated
+            index.onSaved(
+                note.workspaceUri, updated.folderUri, updated.folderName, updated.title,
+                "", updated.messages.joinToString("\n") { it.text },
+                System.currentTimeMillis(), updated.category.key, updated.kind.name.lowercase(),
+            )
+            persistSession()
+            refreshListing()
+        }
+    }
+
     private fun afterChatMutation(updated: Note) {
         _currentNote.value = updated
         val ws = updated.workspaceUri

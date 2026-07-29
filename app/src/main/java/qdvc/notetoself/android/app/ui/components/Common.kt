@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,11 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -82,8 +80,6 @@ fun ListRow(
     showChevron: Boolean = false,
     /** When non-blank, this emoji is shown as the leading glyph instead of [icon]. */
     leadingEmoji: String = "",
-    /** When non-blank, appended after the title in italics, e.g. " (chat)". */
-    italicSuffix: String = "",
     onClick: (() -> Unit)? = null,
 ) {
     Column {
@@ -112,17 +108,7 @@ fun ListRow(
             Column(modifier = Modifier
                 .weight(1f)
                 .padding(start = 16.dp)) {
-                val titleText = if (italicSuffix.isBlank()) {
-                    AnnotatedString(title)
-                } else {
-                    buildAnnotatedString {
-                        append(title)
-                        withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                            append(italicSuffix)
-                        }
-                    }
-                }
-                Text(titleText, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(title, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (subtitle != null) Text(
                     subtitle,
                     style = MaterialTheme.typography.bodySmall,
@@ -186,3 +172,21 @@ fun hierarchySlide(target: Int, initial: Int): ContentTransform {
  */
 val topOnlyInsets: WindowInsets
     @Composable get() = WindowInsets.systemBars.only(WindowInsetsSides.Top)
+
+/** A small outlined pill (transparent fill, onBackground border + text), e.g. "OPEN" / "CHAT". */
+@Composable
+fun LabelPill(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.onBackground,
+                shape = RoundedCornerShape(50),
+            )
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    )
+}

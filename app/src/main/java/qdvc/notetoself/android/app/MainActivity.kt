@@ -207,6 +207,7 @@ private fun AppContent(vm: AppViewModel) {
                             onEditMessage = { i, t -> vm.editChatMessage(i, t) },
                             onSetPersona = vm::setPersona,
                             onToggleClosed = { vm.toggleChatClosed() },
+                            onUpdateMeta = { title, category -> vm.updateChatMeta(title, category) },
                         )
                     } else {
                         ViewScreen(

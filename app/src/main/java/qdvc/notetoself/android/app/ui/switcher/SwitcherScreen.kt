@@ -2,8 +2,6 @@ package qdvc.notetoself.android.app.ui.switcher
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -51,6 +49,7 @@ import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.OpenNote
 import qdvc.notetoself.android.app.ui.components.topOnlyInsets
 import qdvc.notetoself.android.app.ui.components.EmptyState
+import qdvc.notetoself.android.app.ui.components.LabelPill
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -185,7 +184,7 @@ private fun SwitcherRow(
             }
             // Right-side "OPEN" pill marks the currently-open note (hidden while reordering).
             if (isCurrent && !reordering) {
-                OpenPill()
+                LabelPill("OPEN")
             }
             if (reordering) {
                 IconButton(onClick = onUp, enabled = canMoveUp) {
@@ -199,19 +198,3 @@ private fun SwitcherRow(
     }
 }
 
-@Composable
-private fun OpenPill() {
-    Text(
-        "OPEN",
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.onBackground,
-                shape = RoundedCornerShape(50),
-            )
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-    )
-}

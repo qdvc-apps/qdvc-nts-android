@@ -378,6 +378,34 @@ class NoteRepository(private val context: Context) {
         readNote(note.workspaceUri, folder.uri.toString())
     }
 
+    /** Changes a chat's title (renaming its folder if the slug changes) and/or category. */
+    suspend fun updateChatMeta(note: Note, newTitle: String, newCategory: Category): Note? =
+        withContext(Dispatchers.IO) {
+            var folder = resolveFolder(note.workspaceUri, note.folderUri) ?: return@withContext null
+            val datePrefix = note.folderName.take(10)
+
+            val desired = Slug.folderName(datePrefix, newTitle)
+            val root = treeRoot(note.workspaceUri)
+            if (desired != note.folderName && root != null) {
+                val uniqueDesired = uniqueFolderName(root, desired)
+                val renamed = try {
+                    DocumentsContract.renameDocument(resolver, folder.uri, uniqueDesired)
+                } catch (_: Exception) { null }
+                if (renamed != null) {
+                    // Re-resolve through the tree (see updateNote for why fromSingleUri is unsafe).
+                    folder = resolveFolder(note.workspaceUri, renamed.toString())
+                        ?: root.listFiles().firstOrNull { it.isDirectory && it.name == uniqueDesired }
+                        ?: folder
+                }
+            }
+
+            val md = ReadmeFormat.buildChat(
+                folder.name?.take(10) ?: datePrefix, newTitle, newCategory, note.chatClosed, note.messages,
+            )
+            writeReadme(folder, md)
+            readNote(note.workspaceUri, folder.uri.toString())
+        }
+
     private fun rewriteChat(
         folder: DocumentFile,
         note: Note,
