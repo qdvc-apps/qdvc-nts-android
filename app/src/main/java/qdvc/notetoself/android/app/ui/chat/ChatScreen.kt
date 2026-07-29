@@ -10,11 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.exclude
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -341,7 +337,7 @@ private fun MessageBubble(
                 .widthIn(max = 300.dp)
                 .background(bubbleColor, shape)
                 .clickable { onEdit() }
-                .padding(3.dp),
+                .padding(horizontal = 8.dp, vertical = 3.dp),
         ) {
             if (!mine) {
                 Text(
@@ -461,13 +457,12 @@ private fun MessageComposer(
     onAttach: () -> Unit,
     onSend: () -> Unit,
 ) {
-    // Lift the composer by only the part of the keyboard that exceeds the navigation bar,
-    // since the composer already sits above the app's bottom nav bar (plain imePadding would
-    // double-count the nav-bar height and leave a gap between the keyboard and the toolbar).
+    // The app's bottom nav bar is hidden while the keyboard is open, so a plain imePadding()
+    // lifts the composer to sit directly on top of the keyboard.
     Column(
         Modifier
             .background(MaterialTheme.colorScheme.surface)
-            .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.navigationBars)),
+            .imePadding(),
     ) {
         if (replyTo != null) {
             Row(

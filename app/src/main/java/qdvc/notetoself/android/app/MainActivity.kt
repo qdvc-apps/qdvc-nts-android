@@ -12,7 +12,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -69,6 +71,7 @@ private fun AppRoot(vm: AppViewModel) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AppContent(vm: AppViewModel) {
     val tab by vm.tab.collectAsState()
@@ -163,19 +166,24 @@ private fun AppContent(vm: AppViewModel) {
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            NtsBottomBar(
-                current = tab,
-                hasNote = currentNote != null,
-                tabs = listOf(
-                    TabSpec(Tab.HOME, "Home", Icons.Filled.Home, requiresNote = false),
-                    TabSpec(Tab.VIEW, "View", Icons.Filled.Visibility, requiresNote = true),
-                    TabSpec(Tab.SWITCHER, "Jump", Icons.Filled.Layers, requiresNote = false),
-                    TabSpec(Tab.NEW, "New", Icons.Filled.Add, requiresNote = false),
-                ),
-                onSelect = { selected ->
-                    if (selected == Tab.NEW) vm.startNewNote() else vm.selectTab(selected)
-                },
-            )
+            // Hide the app's bottom nav bar while the keyboard is open so a composer (e.g. the chat
+            // message field) can sit directly on top of the keyboard with no gap.
+            val imeVisible = WindowInsets.isImeVisible
+            if (!imeVisible) {
+                NtsBottomBar(
+                    current = tab,
+                    hasNote = currentNote != null,
+                    tabs = listOf(
+                        TabSpec(Tab.HOME, "Home", Icons.Filled.Home, requiresNote = false),
+                        TabSpec(Tab.VIEW, "View", Icons.Filled.Visibility, requiresNote = true),
+                        TabSpec(Tab.SWITCHER, "Jump", Icons.Filled.Layers, requiresNote = false),
+                        TabSpec(Tab.NEW, "New", Icons.Filled.Add, requiresNote = false),
+                    ),
+                    onSelect = { selected ->
+                        if (selected == Tab.NEW) vm.startNewNote() else vm.selectTab(selected)
+                    },
+                )
+            }
         },
     ) { padding ->
         Box(Modifier.padding(padding)) {
