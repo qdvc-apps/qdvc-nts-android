@@ -44,6 +44,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.OpenNote
 import qdvc.notetoself.android.app.ui.components.EmptyState
 import kotlin.math.roundToInt
@@ -156,6 +158,14 @@ private fun SwitcherRow(
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val emoji = Category.fromKey(note.categoryKey).emoji
+            if (emoji.isNotBlank()) {
+                Text(
+                    emoji,
+                    fontSize = 20.sp,
+                    modifier = Modifier.padding(end = 12.dp),
+                )
+            }
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isCurrent) Text("• ", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)

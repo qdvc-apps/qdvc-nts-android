@@ -1,18 +1,18 @@
 {
   "id": "dark-default",
-  "name": "Midnight",
+  "name": "Midnight (Greyscale)",
   "dark": true,
   "colors": {
-    "background": "#16181A",
-    "surface": "#1F2225",
-    "surfaceVariant": "#2C3033",
-    "onBackground": "#E6E6E1",
-    "onSurfaceVariant": "#A5ABAE",
-    "outline": "#43494D",
-    "primary": "#A070FF",
-    "onPrimary": "#12002E",
-    "secondary": "#E0B071",
-    "onSecondary": "#241804",
-    "error": "#F2B8B5"
+    "background": "#171717",
+    "surface": "#212121",
+    "surfaceVariant": "#2E2E2E",
+    "onBackground": "#E6E6E6",
+    "onSurfaceVariant": "#A8A8A8",
+    "outline": "#474747",
+    "primary": "#D6D6D6",
+    "onPrimary": "#1A1A1A",
+    "secondary": "#9E9E9E",
+    "onSecondary": "#1A1A1A",
+    "error": "#BDBDBD"
   }
 }

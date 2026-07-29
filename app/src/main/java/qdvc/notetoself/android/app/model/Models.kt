@@ -10,6 +10,27 @@ enum class BrowseMode { NOTES, SEARCH, INDEX_STATUS }
 
 enum class ThemeMode { AUTOMATIC, LIGHT, DARK }
 
+/**
+ * Optional category a note can be tagged against. [none] means untagged. The [emoji] doubles as
+ * the note's list/detail icon, and [label] is the stored/displayed name. [key] is the stable
+ * token persisted in the README frontmatter (emoji-independent so it survives font changes).
+ */
+enum class Category(val key: String, val emoji: String, val label: String) {
+    NONE("none", "", "Uncategorised"),
+    ACTION_REQUIRED("action-required", "\u26A0\uFE0F", "Action required"),
+    IDEAS_PLANNING("ideas-planning", "\uD83D\uDCD8", "Ideas and planning"),
+    MEETING_NOTES("meeting-notes", "\u260E\uFE0F", "Meeting notes"),
+    USEFUL_ARTICLE("useful-article", "\uD83D\uDCD7", "Useful article");
+
+    companion object {
+        fun fromKey(key: String?): Category =
+            entries.firstOrNull { it.key == key?.trim()?.lowercase() } ?: NONE
+
+        /** Selectable categories (excludes NONE for the "clear" case handled separately). */
+        val selectable: List<Category> get() = entries.filter { it != NONE }
+    }
+}
+
 /** A user-granted workspace folder. */
 data class Workspace(
     val uri: String,
@@ -40,6 +61,10 @@ data class Note(
     val images: List<PayloadImage>,
     /** Timestamp line recorded in the README, e.g. "Wed 29 Jul 2026 15:34:39 AWST". */
     val recordedAt: String,
+    /** Machine-readable epoch millis for the recorded time (drives the folder date + backdating). */
+    val recordedAtMillis: Long,
+    /** Optional category tag; NONE when untagged. */
+    val category: Category = Category.NONE,
 ) {
     val displayTitle: String get() = title.ifBlank { folderName }
 }
@@ -58,6 +83,8 @@ data class OpenNote(
     val folderUri: String,
     val folderName: String,
     val workspaceName: String,
+    /** Stable category key for the switcher icon ("none" when untagged). */
+    val categoryKey: String = "none",
 )
 
 /** Which text surface a font/size setting applies to. */
@@ -74,12 +101,17 @@ data class EditDraft(
     val keepImages: List<String> = emptyList(),
     /** Newly picked images to copy: (displayName, sourceUri). */
     val newImages: List<Pair<String, String>> = emptyList(),
+    /** Recorded time in epoch millis. Defaults to now for a new note; editable (backdating). */
+    val recordedAtMillis: Long = System.currentTimeMillis(),
+    /** Category tag for the note. */
+    val category: Category = Category.NONE,
 ) {
     fun matchesSaved(): Boolean {
         val n = note ?: return title.isBlank() && abstract.isBlank() &&
-            textPayload.isBlank() && newImages.isEmpty()
+            textPayload.isBlank() && newImages.isEmpty() && category == Category.NONE
         return title == n.title && abstract == n.abstract && textPayload == n.textPayload &&
-            newImages.isEmpty() && keepImages.toSet() == n.images.map { it.fileName }.toSet()
+            newImages.isEmpty() && keepImages.toSet() == n.images.map { it.fileName }.toSet() &&
+            recordedAtMillis == n.recordedAtMillis && category == n.category
     }
 }
 

@@ -50,6 +50,7 @@ class IndexRepository(
                             folderName = entry.name,
                             title = note.title,
                             lastModified = entry.lastModified,
+                            categoryKey = note.category.key,
                             content = searchable(note.title, note.abstract, note.textPayload),
                         )
                     )
@@ -73,6 +74,7 @@ class IndexRepository(
     suspend fun onSaved(
         workspaceUri: String, folderUri: String, folderName: String,
         title: String, abstract: String, payload: String, lastModified: Long,
+        categoryKey: String,
     ) {
         dao.upsert(
             NoteEntity(
@@ -81,6 +83,7 @@ class IndexRepository(
                 folderName = folderName,
                 title = title,
                 lastModified = lastModified,
+                categoryKey = categoryKey,
                 content = searchable(title, abstract, payload),
             )
         )

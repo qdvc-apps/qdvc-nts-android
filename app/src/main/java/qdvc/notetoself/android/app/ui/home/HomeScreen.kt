@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import qdvc.notetoself.android.app.data.IndexStatus
 import qdvc.notetoself.android.app.data.index.NoteHit
 import qdvc.notetoself.android.app.model.BrowseMode
+import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.Workspace
 import qdvc.notetoself.android.app.ui.components.EmptyState
 import qdvc.notetoself.android.app.ui.components.ListRow
@@ -182,6 +183,7 @@ private fun NoteListLevel(
         items(listing, key = { it.folderUri }) { hit ->
             ListRow(
                 icon = Icons.Filled.Description,
+                leadingEmoji = Category.fromKey(hit.categoryKey).emoji,
                 title = hit.title.ifBlank { hit.folderName },
                 subtitle = hit.folderName.take(10),
                 showChevron = true,
@@ -218,6 +220,7 @@ private fun SearchLevel(
         items(results, key = { it.folderUri }) { hit ->
             ListRow(
                 icon = Icons.Filled.Description,
+                leadingEmoji = Category.fromKey(hit.categoryKey).emoji,
                 title = hit.title.ifBlank { hit.folderName },
                 subtitle = hit.snippet.ifBlank { hit.folderName.take(10) },
                 showChevron = true,

@@ -17,6 +17,8 @@ data class NoteEntity(
     val folderName: String,
     val title: String,
     val lastModified: Long,
+    /** Stable category key ("none" when untagged) so the list icon needs no file re-read. */
+    val categoryKey: String = "none",
     /** Full searchable body (title + abstract + payload). */
     val content: String,
 )

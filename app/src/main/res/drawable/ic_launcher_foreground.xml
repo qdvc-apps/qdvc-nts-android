@@ -3,7 +3,22 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Thought bubble (cloud) drawn within the adaptive-icon safe zone. -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M36,30 h30 l12,12 v36 a0,0 0 0 1 0,0 h-42 a0,0 0 0 1 0,0 v-48 a0,0 0 0 1 0,0 z M64,32 v10 h10 z M42,52 h24 v4 h-24 z M42,62 h24 v4 h-24 z M42,72 h16 v4 h-16 z" />
+        android:pathData="M54,30
+            C44,30 36,36 36,44
+            C31,44 27,48 27,53
+            C27,58 31,62 36,62
+            L72,62
+            C77,62 81,58 81,53
+            C81,48 77,44 72,44
+            C72,36 64,30 54,30 Z" />
+    <!-- Trailing thought circles (below-left), decreasing in size. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43,70 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,80 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0 Z" />
 </vector>

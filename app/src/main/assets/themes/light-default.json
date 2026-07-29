@@ -1,18 +1,18 @@
 {
   "id": "light-default",
-  "name": "Daylight",
+  "name": "Daylight (Greyscale)",
   "dark": false,
   "colors": {
-    "background": "#FAFAF7",
+    "background": "#FAFAFA",
     "surface": "#FFFFFF",
-    "surfaceVariant": "#ECECE6",
-    "onBackground": "#1B1B18",
-    "onSurfaceVariant": "#5A5A52",
-    "outline": "#C6C6BE",
-    "primary": "#7029FF",
+    "surfaceVariant": "#ECECEC",
+    "onBackground": "#1A1A1A",
+    "onSurfaceVariant": "#585858",
+    "outline": "#C4C4C4",
+    "primary": "#2E2E2E",
     "onPrimary": "#FFFFFF",
-    "secondary": "#8A5A2B",
+    "secondary": "#6B6B6B",
     "onSecondary": "#FFFFFF",
-    "error": "#B3261E"
+    "error": "#5A5A5A"
   }
 }

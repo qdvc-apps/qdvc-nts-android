@@ -27,8 +27,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import qdvc.notetoself.android.app.model.Tab
 
 data class TabSpec(val tab: Tab, val label: String, val icon: ImageVector, val requiresNote: Boolean)
@@ -69,6 +71,8 @@ fun ListRow(
     subtitle: String? = null,
     trailing: @Composable (() -> Unit)? = null,
     showChevron: Boolean = false,
+    /** When non-blank, this emoji is shown as the leading glyph instead of [icon]. */
+    leadingEmoji: String = "",
     onClick: (() -> Unit)? = null,
 ) {
     Column {
@@ -79,12 +83,21 @@ fun ListRow(
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp),
-            )
+            if (leadingEmoji.isNotBlank()) {
+                Text(
+                    leadingEmoji,
+                    fontSize = 22.sp,
+                    modifier = Modifier.size(24.dp),
+                    textAlign = TextAlign.Center,
+                )
+            } else {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
             Column(modifier = Modifier
                 .weight(1f)
                 .padding(start = 16.dp)) {

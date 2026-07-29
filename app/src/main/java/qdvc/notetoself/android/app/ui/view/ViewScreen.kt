@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.Note
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,6 +78,14 @@ fun ViewScreen(note: Note?, fontSize: Float, onEdit: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
                 )
+                if (note.category != Category.NONE) {
+                    Text(
+                        "${note.category.emoji}  ${note.category.label}",
+                        fontSize = (fontSize - 1).sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
                 Text(
                     "Recorded ${note.recordedAt}",
                     fontSize = (fontSize - 3).sp,

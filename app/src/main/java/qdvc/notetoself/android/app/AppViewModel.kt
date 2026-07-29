@@ -17,6 +17,7 @@ import qdvc.notetoself.android.app.data.SettingsRepository
 import qdvc.notetoself.android.app.data.ThemeRepository
 import qdvc.notetoself.android.app.data.index.NoteHit
 import qdvc.notetoself.android.app.model.BrowseMode
+import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.EditDraft
 import qdvc.notetoself.android.app.model.FontContext
 import qdvc.notetoself.android.app.model.Note
@@ -151,13 +152,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val fromIndex = index.listAll(ws)
             val listing = fromIndex ?: run {
-                // Live-scan fallback.
-                notesRepo.scanNoteFolders(ws).map {
-                    NoteHit(ws, it.folderUri, it.name, prettify(it.name), "")
+                // Live-scan fallback (cold path, no index yet): read each note for its category.
+                notesRepo.scanNoteFolders(ws).map { entry ->
+                    val cat = notesRepo.readNote(ws, entry.folderUri)?.category ?: Category.NONE
+                    NoteHit(ws, entry.folderUri, entry.name, prettify(entry.name), cat.key, "")
                 }
             }
             _home.value = _home.value.copy(listing = listing)
-            if (fromIndex == null) index.reconcile(ws)
+            if (fromIndex == null) {
+                index.reconcile(ws)
+                // Re-read from the freshly built index so categories/titles are authoritative.
+                index.listAll(ws)?.let { _home.value = _home.value.copy(listing = it) }
+            }
         }
     }
 
@@ -189,7 +195,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val note = notesRepo.readNote(workspaceUri, folderUri) ?: return@launch
             val wsName = workspaces.value.firstOrNull { it.uri == workspaceUri }?.name ?: "workspace"
-            val open = OpenNote(workspaceUri, note.folderUri, note.folderName, wsName)
+            val open = OpenNote(workspaceUri, note.folderUri, note.folderName, wsName, note.category.key)
             if (_openNotes.value.none { it.folderUri == note.folderUri }) {
                 _openNotes.value = _openNotes.value + open
             }
@@ -204,6 +210,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _draft.value = EditDraft(
             isNew = false, note = note, title = note.title, abstract = note.abstract,
             textPayload = note.textPayload, keepImages = note.images.map { it.fileName },
+            recordedAtMillis = note.recordedAtMillis, category = note.category,
         )
     }
 
@@ -254,6 +261,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _draft.value = EditDraft(
             isNew = false, note = note, title = note.title, abstract = note.abstract,
             textPayload = note.textPayload, keepImages = note.images.map { it.fileName },
+            recordedAtMillis = note.recordedAtMillis, category = note.category,
         )
         _tab.value = Tab.EDIT
     }
@@ -265,6 +273,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun updateDraft(transform: (EditDraft) -> EditDraft) {
         _draft.value = transform(_draft.value)
+    }
+
+    fun setDraftRecordedAt(millis: Long) {
+        _draft.value = _draft.value.copy(recordedAtMillis = millis)
+    }
+
+    fun setDraftCategory(category: Category) {
+        _draft.value = _draft.value.copy(category = category)
     }
 
     fun addDraftImage(displayName: String, sourceUri: String) {
@@ -288,19 +304,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val pending = d.newImages.map { NoteRepository.PendingImage(it.first, it.second) }
             val saved: Note? = if (d.isNew) {
-                notesRepo.createNote(ws, d.title, d.abstract, d.textPayload, pending)
+                notesRepo.createNote(
+                    ws, d.title, d.abstract, d.textPayload, pending,
+                    d.recordedAtMillis, d.category,
+                )
             } else {
                 val old = d.note!!
                 val oldFolderUri = old.folderUri
                 val n = notesRepo.updateNote(
                     old, d.title, d.abstract, d.textPayload, d.keepImages, pending,
+                    d.recordedAtMillis, d.category,
                 )
                 if (n != null && n.folderUri != oldFolderUri) {
                     // Folder renamed: fix session + index references.
                     index.onRenamedOrDeleted(ws, oldFolderUri)
                     _openNotes.value = _openNotes.value.map {
                         if (it.folderUri == oldFolderUri)
-                            it.copy(folderUri = n.folderUri, folderName = n.folderName)
+                            it.copy(
+                                folderUri = n.folderUri,
+                                folderName = n.folderName,
+                                categoryKey = n.category.key,
+                            )
                         else it
                     }
                 }
@@ -310,11 +334,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 index.onSaved(
                     ws, saved.folderUri, saved.folderName, saved.title,
                     saved.abstract, saved.textPayload, System.currentTimeMillis(),
+                    saved.category.key,
                 )
+                // Keep any matching open-note's category/name current (covers category-only edits).
+                _openNotes.value = _openNotes.value.map {
+                    if (it.folderUri == saved.folderUri)
+                        it.copy(folderName = saved.folderName, categoryKey = saved.category.key)
+                    else it
+                }
                 if (_openNotes.value.none { it.folderUri == saved.folderUri }) {
                     val wsName = workspaces.value.firstOrNull { it.uri == ws }?.name ?: "workspace"
                     _openNotes.value = _openNotes.value +
-                        OpenNote(ws, saved.folderUri, saved.folderName, wsName)
+                        OpenNote(ws, saved.folderUri, saved.folderName, wsName, saved.category.key)
                 }
                 selectNote(saved)
                 persistSession()

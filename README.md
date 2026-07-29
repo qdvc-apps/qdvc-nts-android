@@ -46,7 +46,18 @@ Attached images: [screenshot-zoo.png](payloads/screenshot-zoo.png); [IMG_1234.HE
    folder per note with a `YYYY-MM-DD` prefix and `README.md` inside.
 3. **View & edit** — browse all notes, open them into the multitasking switcher,
    view read-only, and edit any field or payload. Renaming the title renames the
-   folder (date prefix preserved); `README.md` is regenerated on every save.
+   folder; `README.md` is regenerated on every save.
+4. **Backdating** — every note's recorded date & time defaults to now but can be
+   set to any date/time (useful for notes first written elsewhere). The chosen
+   time drives both the `YYYY-MM-DD` folder prefix and a machine-readable
+   ISO-8601 stamp in the README, so backdated times survive load/save exactly.
+5. **Categories** — a note can be tagged against a category, whose emoji becomes
+   the note's icon in the list and switcher and is shown when the note is open:
+   ⚠️ Action required · 📘 Ideas and planning · ☎️ Meeting notes · 📗 Useful
+   article. The tag is stored as a stable `Category:` key in the README.
+
+All colour themes are **greyscale**, so category emojis stand out as the only
+colour in the UI.
 
 ## Layout of the four bottom-bar tabs
 

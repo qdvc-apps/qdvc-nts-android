@@ -6,6 +6,7 @@ import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.Note
 import qdvc.notetoself.android.app.model.PayloadImage
 import qdvc.notetoself.android.app.model.Slug
@@ -73,6 +74,12 @@ class NoteRepository(private val context: Context) {
                 PayloadImage(fileName = fn, uri = diskImages[fn])
             }
 
+            // Recorded millis: prefer the ISO stamp; else derive midnight from the folder date
+            // prefix so older notes still sort/backdate sensibly.
+            val millis = parsed.recordedAtMillis
+                ?: runCatching { ReadmeFormat.parseDatePrefix(datePrefix) }.getOrNull()
+                ?: folderDoc.lastModified()
+
             Note(
                 workspaceUri = workspaceUri,
                 folderDocId = DocumentsContract.getDocumentId(folderDoc.uri),
@@ -85,6 +92,8 @@ class NoteRepository(private val context: Context) {
                 textPayload = parsed.textPayload,
                 images = images,
                 recordedAt = parsed.recordedAt.ifBlank { name },
+                recordedAtMillis = millis,
+                category = parsed.category,
             )
         }
 
@@ -119,19 +128,22 @@ class NoteRepository(private val context: Context) {
         abstract: String,
         textPayload: String,
         imageSources: List<PendingImage>,
-        now: Date = Date(),
+        recordedAtMillis: Long,
+        category: Category,
     ): Note? = withContext(Dispatchers.IO) {
         val root = treeRoot(workspaceUri) ?: return@withContext null
-        val datePrefix = ReadmeFormat.datePrefix(now)
+        val recordedDate = Date(recordedAtMillis)
+        val datePrefix = ReadmeFormat.datePrefix(recordedDate)
         val baseName = Slug.folderName(datePrefix, title)
         val folderName = uniqueFolderName(root, baseName)
 
         val folder = root.createDirectory(folderName) ?: return@withContext null
-        val recordedAt = ReadmeFormat.recordedStamp(now)
+        val recordedAt = ReadmeFormat.recordedStamp(recordedDate)
 
         val savedImages = copyImages(folder, imageSources)
         val md = ReadmeFormat.build(
-            datePrefix, title, recordedAt, abstract, textPayload, savedImages,
+            datePrefix, title, recordedAt, recordedAtMillis, category,
+            abstract, textPayload, savedImages,
         )
         writeReadme(folder, md)
 
@@ -145,6 +157,8 @@ class NoteRepository(private val context: Context) {
             textPayload = textPayload,
             images = savedImages,
             recordedAt = recordedAt,
+            recordedAtMillis = recordedAtMillis,
+            category = category,
         )
     }
 
@@ -164,15 +178,23 @@ class NoteRepository(private val context: Context) {
         newTextPayload: String,
         keepImages: List<String>,
         newImages: List<PendingImage>,
+        newRecordedAtMillis: Long,
+        newCategory: Category,
     ): Note? = withContext(Dispatchers.IO) {
         var folder = resolveFolder(note.workspaceUri, note.folderUri) ?: return@withContext null
-        val datePrefix = note.folderName.take(10)
 
-        // Rename folder if title changed.
+        // Date prefix now derives from the (possibly backdated) recorded time.
+        val recordedDate = Date(newRecordedAtMillis)
+        val datePrefix = ReadmeFormat.datePrefix(recordedDate)
+        val recordedAt = ReadmeFormat.recordedStamp(recordedDate)
+
+        // Rename folder if the derived name (date prefix + title slug) changed.
         val desired = Slug.folderName(datePrefix, newTitle)
         if (desired != note.folderName) {
+            val root = treeRoot(note.workspaceUri)
+            val uniqueDesired = if (root != null) uniqueFolderName(root, desired) else desired
             val renamed = try {
-                DocumentsContract.renameDocument(resolver, folder.uri, desired)
+                DocumentsContract.renameDocument(resolver, folder.uri, uniqueDesired)
             } catch (_: Exception) { null }
             if (renamed != null) {
                 folder = DocumentFile.fromSingleUri(context, renamed) ?: folder
@@ -193,12 +215,8 @@ class NoteRepository(private val context: Context) {
         val allImages = kept + added
 
         val md = ReadmeFormat.build(
-            datePrefix,
-            newTitle,
-            note.recordedAt.ifBlank { ReadmeFormat.recordedStamp() },
-            newAbstract,
-            newTextPayload,
-            allImages,
+            datePrefix, newTitle, recordedAt, newRecordedAtMillis, newCategory,
+            newAbstract, newTextPayload, allImages,
         )
         writeReadme(folder, md)
 
@@ -211,7 +229,9 @@ class NoteRepository(private val context: Context) {
             abstract = newAbstract,
             textPayload = newTextPayload,
             images = allImages,
-            recordedAt = note.recordedAt,
+            recordedAt = recordedAt,
+            recordedAtMillis = newRecordedAtMillis,
+            category = newCategory,
         )
     }
 

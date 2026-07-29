@@ -99,7 +99,11 @@ class SettingsRepository(private val context: Context) {
     val openNotes: Flow<List<OpenNote>> = ds.data.map { p ->
         p[Keys.OPEN_NOTES].orEmpty().split(ITEM_SEP).filter { it.isNotBlank() }.mapNotNull { rec ->
             val f = rec.split(SEP)
-            if (f.size >= 4) OpenNote(f[0], f[1], f[2], f[3]) else null
+            when {
+                f.size >= 5 -> OpenNote(f[0], f[1], f[2], f[3], f[4])
+                f.size == 4 -> OpenNote(f[0], f[1], f[2], f[3])
+                else -> null
+            }
         }
     }
 
@@ -108,7 +112,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun persistSession(open: List<OpenNote>, current: String?) {
         ds.edit { p ->
             p[Keys.OPEN_NOTES] = open.joinToString(ITEM_SEP) {
-                "${it.workspaceUri}$SEP${it.folderUri}$SEP${it.folderName}$SEP${it.workspaceName}"
+                "${it.workspaceUri}$SEP${it.folderUri}$SEP${it.folderName}$SEP${it.workspaceName}$SEP${it.categoryKey}"
             }
             if (current == null) p.remove(Keys.CURRENT_NOTE) else p[Keys.CURRENT_NOTE] = current
         }
