@@ -190,14 +190,20 @@ class NoteRepository(private val context: Context) {
 
         // Rename folder if the derived name (date prefix + title slug) changed.
         val desired = Slug.folderName(datePrefix, newTitle)
-        if (desired != note.folderName) {
-            val root = treeRoot(note.workspaceUri)
-            val uniqueDesired = if (root != null) uniqueFolderName(root, desired) else desired
+        val root = treeRoot(note.workspaceUri)
+        if (desired != note.folderName && root != null) {
+            val uniqueDesired = uniqueFolderName(root, desired)
             val renamed = try {
                 DocumentsContract.renameDocument(resolver, folder.uri, uniqueDesired)
             } catch (_: Exception) { null }
             if (renamed != null) {
-                folder = DocumentFile.fromSingleUri(context, renamed) ?: folder
+                // IMPORTANT: renameDocument returns a *single-document* URI. findFile/createFile
+                // only work on a *tree*-backed DocumentFile, so re-resolve the folder by walking
+                // the granted tree (matching document id, then name) instead of using
+                // DocumentFile.fromSingleUri, which would make README/payload writes silently fail.
+                folder = resolveFolder(note.workspaceUri, renamed.toString())
+                    ?: root.listFiles().firstOrNull { it.isDirectory && it.name == uniqueDesired }
+                    ?: folder
             }
         }
 

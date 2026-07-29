@@ -2,6 +2,7 @@ package qdvc.notetoself.android.app.ui.switcher
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -167,20 +169,21 @@ private fun SwitcherRow(
                 )
             }
             Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isCurrent) Text("• ", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    Text(
-                        note.folderName.let { if (it.length > 10) it.substring(11).replace('-', ' ') else it },
-                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                        maxLines = 1,
-                    )
-                }
+                Text(
+                    note.folderName.let { if (it.length > 10) it.substring(11).replace('-', ' ') else it },
+                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                )
                 Text(
                     // Second line: the date the note was made (the folder's YYYY-MM-DD prefix).
                     note.folderName.take(10),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            // Right-side "OPEN" pill marks the currently-open note (hidden while reordering).
+            if (isCurrent && !reordering) {
+                OpenPill()
             }
             if (reordering) {
                 IconButton(onClick = onUp, enabled = canMoveUp) {
@@ -192,4 +195,18 @@ private fun SwitcherRow(
             }
         }
     }
+}
+
+@Composable
+private fun OpenPill() {
+    Text(
+        "OPEN",
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onPrimary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.primary)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    )
 }
