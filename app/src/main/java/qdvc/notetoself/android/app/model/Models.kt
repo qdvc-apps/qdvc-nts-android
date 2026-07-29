@@ -15,17 +15,25 @@ enum class NoteKind { CLASSIC, CHAT }
 
 /**
  * A chat persona. [key] is the stable display name stored in the README level-2 headings;
- * [initials] is the WhatsApp-style avatar placeholder.
+ * [initials] is the WhatsApp-style avatar placeholder; [colorHex] tints the persona's bubbles,
+ * avatar circle, and name label (a lighter/darker variation is derived as needed).
  */
-enum class Persona(val key: String, val initials: String) {
-    NOTE_TAKER("Note Taker", "NT"),
-    PEER_REVIEWER("Peer Reviewer", "PR");
+enum class Persona(val key: String, val initials: String, val colorHex: String) {
+    NOTE_TAKER("Note Taker", "NT", "#3B6EA5"),   // muted blue
+    PEER_REVIEWER("Peer Reviewer", "PR", "#8A5A9B"); // muted purple
 
     companion object {
         fun fromKey(key: String?): Persona =
             entries.firstOrNull { it.key.equals(key?.trim(), ignoreCase = true) } ?: NOTE_TAKER
     }
 }
+
+/** A reference to the message a reply is quoting (rendered as a WhatsApp-style quote block). */
+data class QuotedMessage(
+    val timestampDisplay: String,
+    val personaKey: String,
+    val text: String,
+)
 
 /** A single chat message within a chat-kind note. */
 data class ChatMessage(
@@ -40,6 +48,8 @@ data class ChatMessage(
     val imageFileName: String? = null,
     /** Resolved content URI for the image, if available. */
     val imageUri: String? = null,
+    /** Optional quoted message this one is replying to. */
+    val quoted: QuotedMessage? = null,
 )
 
 /**

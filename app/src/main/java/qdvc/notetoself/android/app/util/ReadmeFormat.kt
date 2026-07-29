@@ -4,6 +4,7 @@ import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.ChatMessage
 import qdvc.notetoself.android.app.model.NoteKind
 import qdvc.notetoself.android.app.model.PayloadImage
+import qdvc.notetoself.android.app.model.QuotedMessage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -124,6 +125,16 @@ object ReadmeFormat {
         if (closed) sb.append("Status: closed\n\n")
         for (m in messages) {
             sb.append("## [").append(m.timestampDisplay).append("] ").append(m.personaKey).append("\n\n")
+            // Quoted reply: a Markdown blockquote wrapping the quoted message's heading + text.
+            val q = m.quoted
+            if (q != null) {
+                sb.append("> ## [").append(q.timestampDisplay).append("] ").append(q.personaKey).append("\n")
+                sb.append("> \n")
+                q.text.trim().split("\n").forEach { line ->
+                    sb.append("> ").append(line).append("\n")
+                }
+                sb.append("\n")
+            }
             val body = m.text.trim()
             if (body.isNotEmpty()) sb.append(body).append("\n\n")
             if (m.imageFileName != null) {
@@ -240,6 +251,27 @@ object ReadmeFormat {
         var curPersona = ""
         val curBody = mutableListOf<String>()
         var curImage: String? = null
+        // Quote accumulation for the current message.
+        val quoteLines = mutableListOf<String>()
+
+        fun buildQuote(): QuotedMessage? {
+            if (quoteLines.isEmpty()) return null
+            // First quoted line is the heading "## [stamp] Persona"; the rest (after a blank) is text.
+            var qStamp = ""
+            var qPersona = ""
+            val qText = mutableListOf<String>()
+            for (ql in quoteLines) {
+                val h = Regex("""^##\s*\[([^\]]+)]\s*(.*)$""").matchEntire(ql)
+                if (h != null && qStamp.isEmpty()) {
+                    qStamp = h.groupValues[1].trim()
+                    qPersona = h.groupValues[2].trim()
+                } else {
+                    qText.add(ql)
+                }
+            }
+            val text = qText.joinToString("\n").trim()
+            return QuotedMessage(qStamp, qPersona.ifBlank { "Note Taker" }, text)
+        }
 
         fun flush() {
             val stamp = curStamp ?: return
@@ -251,10 +283,12 @@ object ReadmeFormat {
                     personaKey = curPersona.trim().ifBlank { "Note Taker" },
                     text = text,
                     imageFileName = curImage,
+                    quoted = buildQuote(),
                 )
             )
             curBody.clear()
             curImage = null
+            quoteLines.clear()
         }
 
         for (line in lines) {
@@ -274,6 +308,13 @@ object ReadmeFormat {
                     category = Category.fromKey(line.removePrefix("Category:").trim())
                 line.startsWith("Status:") && curStamp == null ->
                     closed = line.removePrefix("Status:").trim().equals("closed", true)
+                curStamp != null && line.trimStart().startsWith(">") -> {
+                    // Blockquote line belonging to a quoted reply.
+                    val stripped = line.trimStart().removePrefix(">").let {
+                        if (it.startsWith(" ")) it.substring(1) else it
+                    }
+                    if (stripped.isNotBlank()) quoteLines.add(stripped)
+                }
                 curStamp != null -> {
                     val img = imgRef.find(line)
                     if (img != null) curImage = img.groupValues[2] else curBody.add(line)

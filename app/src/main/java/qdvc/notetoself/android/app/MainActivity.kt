@@ -202,7 +202,7 @@ private fun AppContent(vm: AppViewModel) {
                             note = cn,
                             persona = persona,
                             fontSize = viewFontSize,
-                            onSend = { text -> vm.sendChatMessage(text, null, null) },
+                            onSend = { text, quoted -> vm.sendChatMessage(text, null, null, quoted) },
                             onAttachImage = { pickChatImage.launch(arrayOf("image/*")) },
                             onEditMessage = { i, t -> vm.editChatMessage(i, t) },
                             onSetPersona = vm::setPersona,

@@ -11,6 +11,7 @@ import qdvc.notetoself.android.app.model.ChatMessage
 import qdvc.notetoself.android.app.model.Note
 import qdvc.notetoself.android.app.model.NoteKind
 import qdvc.notetoself.android.app.model.PayloadImage
+import qdvc.notetoself.android.app.model.QuotedMessage
 import qdvc.notetoself.android.app.model.Slug
 import qdvc.notetoself.android.app.util.ReadmeFormat
 import java.util.Date
@@ -336,6 +337,7 @@ class NoteRepository(private val context: Context) {
         text: String,
         imageSourceUri: String?,
         imageDisplayName: String?,
+        quoted: QuotedMessage? = null,
         now: Date = Date(),
     ): Note? = withContext(Dispatchers.IO) {
         val folder = resolveFolder(note.workspaceUri, note.folderUri) ?: return@withContext null
@@ -351,6 +353,7 @@ class NoteRepository(private val context: Context) {
             personaKey = personaKey,
             text = text,
             imageFileName = imageFileName,
+            quoted = quoted,
         )
         val newMessages = note.messages + message
         rewriteChat(folder, note, newMessages, note.chatClosed)

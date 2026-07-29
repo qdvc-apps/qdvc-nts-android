@@ -24,6 +24,7 @@ import qdvc.notetoself.android.app.model.Note
 import qdvc.notetoself.android.app.model.NoteKind
 import qdvc.notetoself.android.app.model.OpenNote
 import qdvc.notetoself.android.app.model.Persona
+import qdvc.notetoself.android.app.model.QuotedMessage
 import qdvc.notetoself.android.app.model.Tab
 import qdvc.notetoself.android.app.model.ThemeMode
 import qdvc.notetoself.android.app.model.Workspace
@@ -305,7 +306,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setPersona(p: Persona) { _persona.value = p }
 
     /** Sends a message from the current persona into the open chat. */
-    fun sendChatMessage(text: String, imageSourceUri: String?, imageDisplayName: String?) {
+    fun sendChatMessage(
+        text: String,
+        imageSourceUri: String?,
+        imageDisplayName: String?,
+        quoted: QuotedMessage? = null,
+    ) {
         val note = _currentNote.value ?: return
         if (note.kind != NoteKind.CHAT || note.chatClosed) return
         val body = text.trim()
@@ -314,7 +320,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (qdvc.notetoself.android.app.util.ReadmeFormat.hasHashLine(body)) return
         viewModelScope.launch {
             val updated = notesRepo.appendChatMessage(
-                note, _persona.value.key, body, imageSourceUri, imageDisplayName,
+                note, _persona.value.key, body, imageSourceUri, imageDisplayName, quoted,
             ) ?: return@launch
             afterChatMutation(updated)
         }
