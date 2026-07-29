@@ -135,5 +135,7 @@ fun hierarchySlide(target: Int, initial: Int): ContentTransform {
         (slideInHorizontally(tween(280)) { -it / 4 } + fadeIn()) togetherWith
             (slideOutHorizontally(tween(280)) { it } + fadeOut())
     }
-    return spec.using(SizeTransform(clip = false) { _, _ -> snap() })
+    // Snap the size so only the horizontal slide animates (avoids the B7 diagonal drift).
+    spec.sizeTransform = SizeTransform(clip = false) { _, _ -> snap() }
+    return spec
 }
