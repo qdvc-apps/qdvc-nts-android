@@ -130,11 +130,16 @@ private fun AppContent(vm: AppViewModel) {
 
     // System back mirrors the active surface's toolbar back (B2).
     val backConsumable = when (tab) {
-        Tab.HOME -> home.mode != BrowseMode.WORKSPACES
+        Tab.HOME -> home.mode != BrowseMode.NOTES
+        Tab.EDIT, Tab.NEW -> true
         else -> false
     }
     BackHandler(enabled = backConsumable) {
-        if (tab == Tab.HOME) vm.browseUp()
+        when (tab) {
+            Tab.HOME -> vm.browseUp()
+            Tab.EDIT, Tab.NEW -> vm.backFromEditing()
+            else -> {}
+        }
     }
 
     Scaffold(
@@ -164,18 +169,14 @@ private fun AppContent(vm: AppViewModel) {
                 Tab.HOME -> HomeScreen(
                     mode = home.mode,
                     workspaces = workspaces,
-                    activeWorkspace = home.activeWorkspace,
                     listing = home.listing,
                     searchQuery = home.searchQuery,
                     searchResults = home.searchResults,
                     indexStatus = indexStatus,
                     onAddWorkspace = { openTree.launch(null) },
-                    onRemoveWorkspace = vm::removeWorkspace,
-                    onOpenWorkspace = vm::openWorkspace,
                     onGoToMode = vm::goToMode,
                     onBrowseUp = { vm.browseUp() },
                     onOpenNote = { vm.openNote(it.workspaceUri, it.folderUri, it.folderName) },
-                    onNewNote = vm::startNewNote,
                     onSearchChange = vm::setSearchQuery,
                     onRegenerate = vm::regenerateIndex,
                     onOpenSettings = { showSettings = true },
@@ -183,7 +184,7 @@ private fun AppContent(vm: AppViewModel) {
                 Tab.VIEW -> ViewScreen(
                     note = currentNote,
                     fontSize = viewFontSize,
-                    onEdit = { vm.selectTab(Tab.EDIT) },
+                    onEdit = { vm.editCurrentNote() },
                 )
                 Tab.EDIT -> EditScreen(
                     draft = draft,

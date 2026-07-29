@@ -4,8 +4,9 @@ package qdvc.notetoself.android.app.model
  *  EDIT is an internal surface reached from View's pencil, not a bottom-bar item. */
 enum class Tab { HOME, VIEW, EDIT, SWITCHER, NEW }
 
-/** Levels of the Item-1 home hierarchy. Ordinal encodes depth for slide animation. */
-enum class BrowseMode { WORKSPACES, OVERVIEW, ALL_NOTES, SEARCH, INDEX_STATUS }
+/** Levels of the Item-1 home hierarchy. Home opens straight to the note list; Search and
+ *  Index status are sub-levels reached from the toolbar menu. Ordinal encodes depth. */
+enum class BrowseMode { NOTES, SEARCH, INDEX_STATUS }
 
 enum class ThemeMode { AUTOMATIC, LIGHT, DARK }
 

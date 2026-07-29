@@ -50,13 +50,13 @@ Attached images: [screenshot-zoo.png](payloads/screenshot-zoo.png); [IMG_1234.HE
 
 ## Layout of the four bottom-bar tabs
 
-**Home** (structure explorer + Settings), **View** (read-only note, with a pencil
-in the top-right to enter edit mode), **Jump** (multitasking switcher with
-swipe-to-close and reorder), and **New** (starts a fresh note straight away).
-Edit is reached from View's pencil rather than being its own bottom-bar item.
-View is disabled until a note is open.
+**Home** opens straight to the list of notes. Its toolbar overflow menu holds
+Search, Index status, Change workspace, and Settings. **View** shows a note
+read-only, with a pencil in the top-right to edit it (Android back returns to
+View). **Jump** is the multitasking switcher (swipe-to-close and reorder).
+**New** starts a fresh note immediately. View is disabled until a note is open.
 
-Only **one workspace** is used at a time; picking a new folder replaces the
+Only **one workspace** is used at a time; choosing a new folder replaces the
 previous one (your files are never touched) and resets the open-note session.
 
 ## Deviations from the spec (and why)

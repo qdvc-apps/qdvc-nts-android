@@ -26,7 +26,7 @@ import qdvc.notetoself.android.app.model.ThemeMode
 import qdvc.notetoself.android.app.model.Workspace
 
 data class HomeState(
-    val mode: BrowseMode = BrowseMode.WORKSPACES,
+    val mode: BrowseMode = BrowseMode.NOTES,
     val activeWorkspace: String? = null,
     val listing: List<NoteHit> = emptyList(),
     val searchQuery: String = "",
@@ -85,6 +85,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             settings.activeWorkspace.collect { active ->
                 if (active != null && _home.value.activeWorkspace != active) {
                     _home.value = _home.value.copy(activeWorkspace = active)
+                    refreshListing()
                 }
             }
         }
@@ -112,19 +113,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             _openNotes.value = emptyList()
             _currentNote.value = null
             _draft.value = EditDraft()
-            _home.value = _home.value.copy(activeWorkspace = ws.uri, mode = BrowseMode.OVERVIEW)
+            _home.value = _home.value.copy(activeWorkspace = ws.uri, mode = BrowseMode.NOTES)
             index.reconcile(ws.uri)
-        }
-    }
-
-    fun removeWorkspace(uri: String) {
-        viewModelScope.launch { settings.removeWorkspace(uri) }
-    }
-
-    fun openWorkspace(uri: String) {
-        viewModelScope.launch {
-            settings.setActiveWorkspace(uri)
-            _home.value = _home.value.copy(activeWorkspace = uri, mode = BrowseMode.OVERVIEW)
+            refreshListing()
         }
     }
 
@@ -133,24 +124,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun goToMode(mode: BrowseMode) {
         _home.value = _home.value.copy(mode = mode)
         when (mode) {
-            BrowseMode.ALL_NOTES -> refreshListing()
+            BrowseMode.NOTES -> refreshListing()
             BrowseMode.INDEX_STATUS -> refreshIndexStatus()
             else -> {}
         }
     }
 
     fun homeRoot() {
-        _home.value = _home.value.copy(mode = BrowseMode.WORKSPACES, searchQuery = "", searchResults = emptyList())
+        _home.value = _home.value.copy(mode = BrowseMode.NOTES, searchQuery = "", searchResults = emptyList())
+        refreshListing()
     }
 
-    /** Returns true if it consumed the back action (B2). */
+    /** Returns true if it consumed the back action (B2). NOTES is the home root. */
     fun browseUp(): Boolean {
         val h = _home.value
         return when (h.mode) {
-            BrowseMode.WORKSPACES -> false
-            BrowseMode.OVERVIEW -> { _home.value = h.copy(mode = BrowseMode.WORKSPACES); true }
-            BrowseMode.ALL_NOTES, BrowseMode.SEARCH, BrowseMode.INDEX_STATUS -> {
-                _home.value = h.copy(mode = BrowseMode.OVERVIEW); true
+            BrowseMode.NOTES -> false
+            BrowseMode.SEARCH, BrowseMode.INDEX_STATUS -> {
+                _home.value = h.copy(mode = BrowseMode.NOTES); true
             }
         }
     }
@@ -251,9 +242,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---- editing -----------------------------------------------------------
 
     fun startNewNote() {
-        _currentNote.value = null
+        // Prepare a blank draft but keep the currently-viewed note intact so View (Tab 2)
+        // stays usable. The NEW tab renders the Edit surface from this draft.
         _draft.value = EditDraft(isNew = true)
+        _tab.value = Tab.NEW
+    }
+
+    /** Enter edit mode for the note currently shown in View (pencil action). */
+    fun editCurrentNote() {
+        val note = _currentNote.value ?: return
+        _draft.value = EditDraft(
+            isNew = false, note = note, title = note.title, abstract = note.abstract,
+            textPayload = note.textPayload, keepImages = note.images.map { it.fileName },
+        )
         _tab.value = Tab.EDIT
+    }
+
+    /** Leave an Edit/New surface via back: return to View if a note is open, else Home. */
+    fun backFromEditing() {
+        _tab.value = if (_currentNote.value != null) Tab.VIEW else Tab.HOME
     }
 
     fun updateDraft(transform: (EditDraft) -> EditDraft) {

@@ -8,16 +8,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,30 +50,27 @@ import java.util.Locale
 fun HomeScreen(
     mode: BrowseMode,
     workspaces: List<Workspace>,
-    activeWorkspace: String?,
     listing: List<NoteHit>,
     searchQuery: String,
     searchResults: List<NoteHit>,
     indexStatus: IndexStatus,
     onAddWorkspace: () -> Unit,
-    onRemoveWorkspace: (String) -> Unit,
-    onOpenWorkspace: (String) -> Unit,
     onGoToMode: (BrowseMode) -> Unit,
     onBrowseUp: () -> Unit,
     onOpenNote: (NoteHit) -> Unit,
-    onNewNote: () -> Unit,
     onSearchChange: (String) -> Unit,
     onRegenerate: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val title = when (mode) {
-        BrowseMode.WORKSPACES -> "QDVC NTS"
-        BrowseMode.OVERVIEW -> workspaces.firstOrNull { it.uri == activeWorkspace }?.name ?: "Workspace"
-        BrowseMode.ALL_NOTES -> "All notes"
+        BrowseMode.NOTES -> "Notes"
         BrowseMode.SEARCH -> "Search"
         BrowseMode.INDEX_STATUS -> "Index status"
     }
-    val showBack = mode != BrowseMode.WORKSPACES
+    val showBack = mode != BrowseMode.NOTES
+    var menuOpen by remember { mutableStateOf(false) }
+    var confirmChange by remember { mutableStateOf(false) }
+    val hasWorkspace = workspaces.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -86,9 +82,34 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    if (mode == BrowseMode.WORKSPACES) {
-                        IconButton(onClick = onOpenSettings) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "Settings")
+                    if (mode == BrowseMode.NOTES) {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = "Menu")
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Search") },
+                                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                                onClick = { menuOpen = false; onGoToMode(BrowseMode.SEARCH) },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Index status") },
+                                leadingIcon = { Icon(Icons.Filled.Storage, contentDescription = null) },
+                                onClick = { menuOpen = false; onGoToMode(BrowseMode.INDEX_STATUS) },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(if (hasWorkspace) "Change workspace" else "Add workspace") },
+                                leadingIcon = { Icon(Icons.Filled.FolderOpen, contentDescription = null) },
+                                onClick = {
+                                    menuOpen = false
+                                    if (hasWorkspace) confirmChange = true else onAddWorkspace()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Settings") },
+                                leadingIcon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                                onClick = { menuOpen = false; onOpenSettings() },
+                            )
                         }
                     }
                 },
@@ -106,102 +127,63 @@ fun HomeScreen(
                 label = "home",
             ) { m ->
                 when (m) {
-                    BrowseMode.WORKSPACES -> WorkspacesLevel(
-                        workspaces, onAddWorkspace, onRemoveWorkspace, onOpenWorkspace,
-                    )
-                    BrowseMode.OVERVIEW -> OverviewLevel(onGoToMode, onNewNote)
-                    BrowseMode.ALL_NOTES -> NoteListLevel(listing, onOpenNote)
+                    BrowseMode.NOTES -> NoteListLevel(hasWorkspace, listing, onAddWorkspace, onOpenNote)
                     BrowseMode.SEARCH -> SearchLevel(searchQuery, searchResults, onSearchChange, onOpenNote)
                     BrowseMode.INDEX_STATUS -> IndexStatusLevel(indexStatus, onRegenerate)
                 }
             }
         }
     }
-}
 
-@Composable
-private fun WorkspacesLevel(
-    workspaces: List<Workspace>,
-    onAdd: () -> Unit,
-    onRemove: (String) -> Unit,
-    onOpen: (String) -> Unit,
-) {
-    var confirmRemove by remember { mutableStateOf<Workspace?>(null) }
-    val hasWorkspace = workspaces.isNotEmpty()
-    LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            ListRow(
-                icon = Icons.Filled.CreateNewFolder,
-                title = if (hasWorkspace) "Change workspace" else "Add workspace",
-                subtitle = if (hasWorkspace)
-                    "Pick a different folder (only one workspace is used at a time)"
-                else
-                    "Grant a device folder to store notes",
-                onClick = onAdd,
-            )
-        }
-        if (workspaces.isEmpty()) {
-            item { EmptyState("No workspaces yet. Add a folder to get started.") }
-        } else {
-            items(workspaces, key = { it.uri }) { ws ->
-                ListRow(
-                    icon = Icons.Filled.Storage,
-                    title = ws.name,
-                    subtitle = "Tap to open",
-                    showChevron = true,
-                    trailing = {
-                        IconButton(onClick = { confirmRemove = ws }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Remove", tint = MaterialTheme.colorScheme.error)
-                        }
-                    },
-                    onClick = { onOpen(ws.uri) },
-                )
-            }
-        }
-    }
-    confirmRemove?.let { ws ->
+    if (confirmChange) {
         AlertDialog(
-            onDismissRequest = { confirmRemove = null },
-            title = { Text("Remove workspace?") },
-            text = { Text("This only removes the app's pointer to \"${ws.name}\". Your files are not deleted.") },
-            confirmButton = {
-                TextButton(onClick = { onRemove(ws.uri); confirmRemove = null }) { Text("Remove") }
+            onDismissRequest = { confirmChange = false },
+            title = { Text("Change workspace?") },
+            text = {
+                Text(
+                    "Only one workspace is used at a time. Picking a different folder will switch " +
+                        "to it and close any open notes. Your files are not deleted.",
+                )
             },
-            dismissButton = { TextButton(onClick = { confirmRemove = null }) { Text("Cancel") } },
+            confirmButton = {
+                TextButton(onClick = { confirmChange = false; onAddWorkspace() }) { Text("Choose folder") }
+            },
+            dismissButton = { TextButton(onClick = { confirmChange = false }) { Text("Cancel") } },
         )
     }
 }
 
 @Composable
-private fun OverviewLevel(onGoToMode: (BrowseMode) -> Unit, onNewNote: () -> Unit) {
-    LazyColumn(Modifier.fillMaxSize()) {
-        item {
-            ListRow(Icons.Filled.Add, "New note to self", "Write a fresh note", onClick = onNewNote)
+private fun NoteListLevel(
+    hasWorkspace: Boolean,
+    listing: List<NoteHit>,
+    onAddWorkspace: () -> Unit,
+    onOpen: (NoteHit) -> Unit,
+) {
+    if (!hasWorkspace) {
+        LazyColumn(Modifier.fillMaxSize()) {
+            item {
+                ListRow(
+                    icon = Icons.Filled.FolderOpen,
+                    title = "Add workspace",
+                    subtitle = "Grant a device folder to store your notes",
+                    onClick = onAddWorkspace,
+                )
+            }
+            item { EmptyState("No workspace yet. Add a folder to start writing notes.") }
         }
-        item {
-            ListRow(Icons.AutoMirrored.Filled.List, "All notes", "Browse every note in this workspace",
-                showChevron = true, onClick = { onGoToMode(BrowseMode.ALL_NOTES) })
-        }
-        item {
-            ListRow(Icons.Filled.Search, "Search", "Full-text search over notes",
-                showChevron = true, onClick = { onGoToMode(BrowseMode.SEARCH) })
-        }
-        item {
-            ListRow(Icons.Filled.Storage, "Index status", "State of the search index",
-                showChevron = true, onClick = { onGoToMode(BrowseMode.INDEX_STATUS) })
-        }
+        return
     }
-}
-
-@Composable
-private fun NoteListLevel(listing: List<NoteHit>, onOpen: (NoteHit) -> Unit) {
-    if (listing.isEmpty()) { EmptyState("No notes yet. Create one from the workspace overview."); return }
+    if (listing.isEmpty()) {
+        EmptyState("No notes yet. Tap \"New\" below to write your first note to self.")
+        return
+    }
     LazyColumn(Modifier.fillMaxSize()) {
         items(listing, key = { it.folderUri }) { hit ->
             ListRow(
                 icon = Icons.Filled.Description,
                 title = hit.title.ifBlank { hit.folderName },
-                subtitle = hit.folderName,
+                subtitle = hit.folderName.take(10),
                 showChevron = true,
                 onClick = { onOpen(hit) },
             )
@@ -237,7 +219,7 @@ private fun SearchLevel(
             ListRow(
                 icon = Icons.Filled.Description,
                 title = hit.title.ifBlank { hit.folderName },
-                subtitle = hit.snippet.ifBlank { hit.folderName },
+                subtitle = hit.snippet.ifBlank { hit.folderName.take(10) },
                 showChevron = true,
                 onClick = { onOpen(hit) },
             )
@@ -254,15 +236,15 @@ private fun IndexStatusLevel(status: IndexStatus, onRegenerate: () -> Unit) {
                 IndexStatus.State.NOT_BUILT, IndexStatus.State.UNKNOWN ->
                     "Not built" to "The index will build on demand."
                 IndexStatus.State.BUILDING ->
-                    "Building…" to "${status.processed} processed — ${status.currentFile}"
+                    "Building..." to "${status.processed} processed - ${status.currentFile}"
                 IndexStatus.State.READY ->
-                    "Ready" to "${status.count} notes · last rebuilt ${fmt.format(Date(status.lastRegenerated))}"
+                    "Ready" to "${status.count} notes - last rebuilt ${fmt.format(Date(status.lastRegenerated))}"
             }
             ListRow(Icons.Filled.Storage, label, sub)
         }
         item {
             ListRow(
-                Icons.Filled.Add,
+                Icons.Filled.Search,
                 "Regenerate now",
                 "Rebuilds only the app's private index; never touches your files.",
                 onClick = onRegenerate,
