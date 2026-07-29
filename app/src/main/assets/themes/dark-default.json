@@ -1,0 +1,18 @@
+{
+  "id": "dark-default",
+  "name": "Midnight",
+  "dark": true,
+  "colors": {
+    "background": "#16181A",
+    "surface": "#1F2225",
+    "surfaceVariant": "#2C3033",
+    "onBackground": "#E6E6E1",
+    "onSurfaceVariant": "#A5ABAE",
+    "outline": "#43494D",
+    "primary": "#6FD6BC",
+    "onPrimary": "#04211A",
+    "secondary": "#E0B071",
+    "onSecondary": "#241804",
+    "error": "#F2B8B5"
+  }
+}

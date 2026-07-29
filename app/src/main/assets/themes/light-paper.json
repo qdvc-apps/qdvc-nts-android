@@ -1,0 +1,18 @@
+{
+  "id": "light-paper",
+  "name": "Warm Paper",
+  "dark": false,
+  "colors": {
+    "background": "#F5EFE2",
+    "surface": "#FBF7EE",
+    "surfaceVariant": "#E7DEC9",
+    "onBackground": "#2A2318",
+    "onSurfaceVariant": "#6B5F47",
+    "outline": "#CBBE9F",
+    "primary": "#9A5B2C",
+    "onPrimary": "#FFFFFF",
+    "secondary": "#4C6A3A",
+    "onSecondary": "#FFFFFF",
+    "error": "#A5301C"
+  }
+}
