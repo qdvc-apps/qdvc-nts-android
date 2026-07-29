@@ -9,8 +9,8 @@
     "onBackground": "#E6E6E1",
     "onSurfaceVariant": "#A5ABAE",
     "outline": "#43494D",
-    "primary": "#6FD6BC",
-    "onPrimary": "#04211A",
+    "primary": "#A070FF",
+    "onPrimary": "#12002E",
     "secondary": "#E0B071",
     "onSecondary": "#241804",
     "error": "#F2B8B5"

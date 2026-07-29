@@ -94,6 +94,13 @@ fun ViewScreen(note: Note?, fontSize: Float, onEdit: () -> Unit) {
                 SectionHeader("Payload", fontSize)
                 if (note.textPayload.isNotBlank()) {
                     Text(
+                        "Payload text",
+                        fontSize = (fontSize - 1).sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    Text(
                         note.textPayload,
                         fontSize = fontSize.sp,
                         modifier = Modifier.padding(vertical = 8.dp),
@@ -101,7 +108,7 @@ fun ViewScreen(note: Note?, fontSize: Float, onEdit: () -> Unit) {
                 }
                 if (note.images.isNotEmpty()) {
                     Text(
-                        "Attached images",
+                        "Payload image(s)",
                         fontSize = (fontSize - 1).sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.secondary,

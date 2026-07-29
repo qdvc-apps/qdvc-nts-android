@@ -64,6 +64,21 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
+    /**
+     * Make [ws] the one and only workspace. Any previously granted workspace pointer is dropped
+     * (the user's files are untouched), and the open-note session is cleared since those notes
+     * belonged to the previous workspace.
+     */
+    suspend fun replaceWorkspace(ws: Workspace) {
+        ds.edit { p ->
+            p[Keys.WORKSPACES] = "${ws.uri}$SEP${ws.name}"
+            p[Keys.WORKSPACE_ORDER] = ws.uri
+            p[Keys.ACTIVE_WORKSPACE] = ws.uri
+            p.remove(Keys.OPEN_NOTES)
+            p.remove(Keys.CURRENT_NOTE)
+        }
+    }
+
     suspend fun removeWorkspace(uri: String) {
         ds.edit { p ->
             p[Keys.WORKSPACES] = p[Keys.WORKSPACES].orEmpty().split(ITEM_SEP)

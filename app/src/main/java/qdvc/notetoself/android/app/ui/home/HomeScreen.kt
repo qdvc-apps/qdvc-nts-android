@@ -127,12 +127,16 @@ private fun WorkspacesLevel(
     onOpen: (String) -> Unit,
 ) {
     var confirmRemove by remember { mutableStateOf<Workspace?>(null) }
+    val hasWorkspace = workspaces.isNotEmpty()
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             ListRow(
                 icon = Icons.Filled.CreateNewFolder,
-                title = "Add workspace",
-                subtitle = "Grant a device folder to store notes",
+                title = if (hasWorkspace) "Change workspace" else "Add workspace",
+                subtitle = if (hasWorkspace)
+                    "Pick a different folder (only one workspace is used at a time)"
+                else
+                    "Grant a device folder to store notes",
                 onClick = onAdd,
             )
         }

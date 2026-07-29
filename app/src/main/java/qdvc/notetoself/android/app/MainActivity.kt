@@ -18,9 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Scaffold
@@ -138,17 +138,20 @@ private fun AppContent(vm: AppViewModel) {
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             NtsBottomBar(
                 current = tab,
-                hasNote = currentNote != null || (tab == Tab.EDIT && draft.isNew),
+                hasNote = currentNote != null,
                 tabs = listOf(
                     TabSpec(Tab.HOME, "Home", Icons.Filled.Home, requiresNote = false),
                     TabSpec(Tab.VIEW, "View", Icons.Filled.Visibility, requiresNote = true),
-                    TabSpec(Tab.EDIT, "Edit", Icons.Filled.Edit, requiresNote = true),
-                    TabSpec(Tab.SWITCHER, "Open", Icons.AutoMirrored.Filled.ViewList, requiresNote = false),
+                    TabSpec(Tab.SWITCHER, "Jump", Icons.Filled.Layers, requiresNote = false),
+                    TabSpec(Tab.NEW, "New", Icons.Filled.Add, requiresNote = false),
                 ),
-                onSelect = { vm.selectTab(it) },
+                onSelect = { selected ->
+                    if (selected == Tab.NEW) vm.startNewNote() else vm.selectTab(selected)
+                },
             )
         },
     ) { padding ->
@@ -204,6 +207,20 @@ private fun AppContent(vm: AppViewModel) {
                         if (isCurrentDraftDirty) confirmClose = note else vm.closeNote(note)
                     },
                     onMove = vm::moveOpen,
+                )
+                // NEW is an action (startNewNote switches to EDIT); render Edit as a safe fallback.
+                Tab.NEW -> EditScreen(
+                    draft = draft,
+                    fontSize = editFontSize,
+                    canSave = draft.title.isNotBlank() && !draft.matchesSaved(),
+                    onTitle = { t -> vm.updateDraft { it.copy(title = t) } },
+                    onAbstract = { a -> vm.updateDraft { it.copy(abstract = a) } },
+                    onPayload = { p -> vm.updateDraft { it.copy(textPayload = p) } },
+                    onPickImage = { pickImage.launch(arrayOf("image/*")) },
+                    onRemoveKeepImage = vm::removeKeepImage,
+                    onRemoveNewImage = vm::removeNewImage,
+                    onSave = { vm.saveDraft() },
+                    onDelete = { vm.deleteCurrent() },
                 )
             }
         }

@@ -1,7 +1,8 @@
 package qdvc.notetoself.android.app.model
 
-/** Bottom-bar tabs. Item1=Home, Item2=View, Item3=Edit, Item4=Switcher. */
-enum class Tab { HOME, VIEW, EDIT, SWITCHER }
+/** Bottom-bar tabs. Item1=Home, Item2=View, Item3=Jump (switcher), Item4=New (action).
+ *  EDIT is an internal surface reached from View's pencil, not a bottom-bar item. */
+enum class Tab { HOME, VIEW, EDIT, SWITCHER, NEW }
 
 /** Levels of the Item-1 home hierarchy. Ordinal encodes depth for slide animation. */
 enum class BrowseMode { WORKSPACES, OVERVIEW, ALL_NOTES, SEARCH, INDEX_STATUS }

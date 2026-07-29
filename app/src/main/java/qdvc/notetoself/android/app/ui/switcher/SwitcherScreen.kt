@@ -166,7 +166,8 @@ private fun SwitcherRow(
                     )
                 }
                 Text(
-                    note.workspaceName,
+                    // Second line: the date the note was made (the folder's YYYY-MM-DD prefix).
+                    note.folderName.take(10),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

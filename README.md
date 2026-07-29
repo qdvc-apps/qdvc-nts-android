@@ -50,9 +50,14 @@ Attached images: [screenshot-zoo.png](payloads/screenshot-zoo.png); [IMG_1234.HE
 
 ## Layout of the four bottom-bar tabs
 
-Per the spec: **Home** (structure explorer + Settings), **View** (read-only note),
-**Edit** (editable note), **Open** (multitasking switcher with swipe-to-close and
-reorder). View/Edit are disabled until a note is open.
+**Home** (structure explorer + Settings), **View** (read-only note, with a pencil
+in the top-right to enter edit mode), **Jump** (multitasking switcher with
+swipe-to-close and reorder), and **New** (starts a fresh note straight away).
+Edit is reached from View's pencil rather than being its own bottom-bar item.
+View is disabled until a note is open.
+
+Only **one workspace** is used at a time; picking a new folder replaces the
+previous one (your files are never touched) and resets the open-note session.
 
 ## Deviations from the spec (and why)
 

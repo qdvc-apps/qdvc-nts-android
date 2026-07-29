@@ -103,7 +103,7 @@ fun EditScreen(
             )
 
             Text(
-                "Attached images",
+                "Payload image(s)",
                 fontSize = (fontSize + 1).sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,

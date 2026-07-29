@@ -107,8 +107,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             notesRepo.takePersistablePermission(treeUri)
             val ws = Workspace(treeUri.toString(), notesRepo.workspaceName(treeUri))
-            settings.addWorkspace(ws)
-            settings.setActiveWorkspace(ws.uri)
+            // Single-workspace policy: replace any existing workspace and reset session.
+            settings.replaceWorkspace(ws)
+            _openNotes.value = emptyList()
+            _currentNote.value = null
+            _draft.value = EditDraft()
             _home.value = _home.value.copy(activeWorkspace = ws.uri, mode = BrowseMode.OVERVIEW)
             index.reconcile(ws.uri)
         }
