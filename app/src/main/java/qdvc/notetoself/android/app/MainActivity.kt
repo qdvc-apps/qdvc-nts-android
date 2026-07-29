@@ -13,10 +13,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
@@ -181,11 +178,7 @@ private fun AppContent(vm: AppViewModel) {
             )
         },
     ) { padding ->
-        Box(
-            Modifier
-                .padding(padding)
-                .windowInsetsPadding(WindowInsets.systemBars.only(androidx.compose.foundation.layout.WindowInsetsSides.Bottom)),
-        ) {
+        Box(Modifier.padding(padding)) {
             when (tab) {
                 Tab.HOME -> HomeScreen(
                     mode = home.mode,

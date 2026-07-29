@@ -32,11 +32,12 @@ import androidx.compose.ui.unit.sp
 import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.EditDraft
 import qdvc.notetoself.android.app.model.NoteKind
+import qdvc.notetoself.android.app.ui.components.topOnlyInsets
 import qdvc.notetoself.android.app.ui.components.hierarchySlide
 
 /**
- * The New tab: a top tab-bar choosing between a "Classic note" (the full [EditScreen] form) and
- * a "Chat" (a minimal title + category form that creates a chat thread).
+ * The New tab: a single top app bar with a TabRow beneath it choosing between "Classic note"
+ * (the full edit form, hosted without its own bar) and "Chat" (title + category).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,70 +64,94 @@ fun NewNoteScreen(
     onChatCategory: (Category) -> Unit,
     onCreateChat: () -> Unit,
 ) {
-    Column(Modifier.fillMaxSize()) {
-        TabRow(
-            selectedTabIndex = if (kind == NoteKind.CLASSIC) 0 else 1,
-            containerColor = MaterialTheme.colorScheme.surface,
+    Scaffold(
+        contentWindowInsets = topOnlyInsets,
+        topBar = {
+            Column {
+                TopAppBar(
+                    title = { Text("New") },
+                    actions = {
+                        val canSave =
+                            if (kind == NoteKind.CLASSIC) classicCanSave else chatTitle.isNotBlank()
+                        if (canSave) IconButton(
+                            onClick = { if (kind == NoteKind.CLASSIC) onSaveClassic() else onCreateChat() },
+                        ) { Icon(Icons.Filled.Check, contentDescription = "Save") }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                )
+                TabRow(
+                    selectedTabIndex = if (kind == NoteKind.CLASSIC) 0 else 1,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                ) {
+                    Tab(
+                        selected = kind == NoteKind.CLASSIC,
+                        onClick = { onKindChange(NoteKind.CLASSIC) },
+                        text = { Text("Classic note") },
+                    )
+                    Tab(
+                        selected = kind == NoteKind.CHAT,
+                        onClick = { onKindChange(NoteKind.CHAT) },
+                        text = { Text("Chat") },
+                    )
+                }
+            }
+        },
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding),
         ) {
-            Tab(
-                selected = kind == NoteKind.CLASSIC,
-                onClick = { onKindChange(NoteKind.CLASSIC) },
-                text = { Text("Classic note") },
-            )
-            Tab(
-                selected = kind == NoteKind.CHAT,
-                onClick = { onKindChange(NoteKind.CHAT) },
-                text = { Text("Chat") },
-            )
-        }
-
-        if (kind == NoteKind.CLASSIC) {
-            EditScreen(
-                draft = draft,
-                fontSize = editFontSize,
-                canSave = classicCanSave,
-                onTitle = onTitle,
-                onAbstract = onAbstract,
-                onPayload = onPayload,
-                onCategory = onCategory,
-                onRecordedAt = onRecordedAt,
-                onPickImage = onPickImage,
-                onRemoveKeepImage = onRemoveKeepImage,
-                onRemoveNewImage = onRemoveNewImage,
-                onSave = onSaveClassic,
-                onDelete = {}, // never shown for a new note
-            )
-        } else {
-            var showChatCategoryPicker by remember { mutableStateOf(false) }
-            AnimatedContent(
-                targetState = showChatCategoryPicker,
-                transitionSpec = {
-                    hierarchySlide(if (targetState) 1 else 0, if (initialState) 1 else 0)
-                },
-                label = "chat-category",
-            ) { picking ->
-                if (picking) {
-                    CategoryPickerScreen(
-                        selected = chatCategory,
-                        onPick = { c -> onChatCategory(c); showChatCategoryPicker = false },
-                        onBack = { showChatCategoryPicker = false },
-                    )
-                } else {
-                    ChatEntryForm(
-                        title = chatTitle,
-                        category = chatCategory,
-                        fontSize = editFontSize,
-                        onTitle = onChatTitle,
-                        onOpenCategoryPicker = { showChatCategoryPicker = true },
-                        onCreate = onCreateChat,
-                    )
+            if (kind == NoteKind.CLASSIC) {
+                EditScreen(
+                    draft = draft,
+                    fontSize = editFontSize,
+                    canSave = classicCanSave,
+                    onTitle = onTitle,
+                    onAbstract = onAbstract,
+                    onPayload = onPayload,
+                    onCategory = onCategory,
+                    onRecordedAt = onRecordedAt,
+                    onPickImage = onPickImage,
+                    onRemoveKeepImage = onRemoveKeepImage,
+                    onRemoveNewImage = onRemoveNewImage,
+                    onSave = onSaveClassic,
+                    onDelete = {},
+                    showTopBar = false,
+                )
+            } else {
+                var showChatCategoryPicker by remember { mutableStateOf(false) }
+                AnimatedContent(
+                    targetState = showChatCategoryPicker,
+                    transitionSpec = {
+                        hierarchySlide(if (targetState) 1 else 0, if (initialState) 1 else 0)
+                    },
+                    label = "chat-category",
+                ) { picking ->
+                    if (picking) {
+                        CategoryPickerScreen(
+                            selected = chatCategory,
+                            onPick = { c -> onChatCategory(c); showChatCategoryPicker = false },
+                            onBack = { showChatCategoryPicker = false },
+                        )
+                    } else {
+                        ChatEntryForm(
+                            title = chatTitle,
+                            category = chatCategory,
+                            fontSize = editFontSize,
+                            onTitle = onChatTitle,
+                            onOpenCategoryPicker = { showChatCategoryPicker = true },
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChatEntryForm(
     title: String,
@@ -134,57 +159,39 @@ private fun ChatEntryForm(
     fontSize: Float,
     onTitle: (String) -> Unit,
     onOpenCategoryPicker: () -> Unit,
-    onCreate: () -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("New chat") },
-                actions = {
-                    if (title.isNotBlank()) IconButton(onClick = onCreate) {
-                        Icon(Icons.Filled.Check, contentDescription = "Create chat")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            )
-        },
-    ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                "A chat is a running thread of timestamped messages you send to yourself " +
-                    "(and between personas). Set a title and optional category to begin.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            OutlinedTextField(
-                value = title,
-                onValueChange = onTitle,
-                label = { Text("Title (required)") },
-                isError = title.isBlank(),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                "Category",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            OutlinedButton(onClick = onOpenCategoryPicker, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.Sell, contentDescription = null)
-                val label = if (category == Category.NONE) "Set category\u2026"
-                else "${category.emoji} ${category.label}"
-                Text("  $label", fontSize = fontSize.sp)
-            }
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            "A chat is a running thread of timestamped messages you send to yourself " +
+                "(and between personas). Set a title and optional category, then tap the tick " +
+                "to begin.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedTextField(
+            value = title,
+            onValueChange = onTitle,
+            label = { Text("Title (required)") },
+            isError = title.isBlank(),
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            "Category",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        OutlinedButton(onClick = onOpenCategoryPicker, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Filled.Sell, contentDescription = null)
+            val label = if (category == Category.NONE) "Set category\u2026"
+            else "${category.emoji} ${category.label}"
+            Text("  $label", fontSize = fontSize.sp)
         }
     }
 }

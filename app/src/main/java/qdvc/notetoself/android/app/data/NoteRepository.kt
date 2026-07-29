@@ -255,6 +255,42 @@ class NoteRepository(private val context: Context) {
         resolveFolder(note.workspaceUri, note.folderUri)?.delete() ?: false
     }
 
+    /**
+     * Backfills the `Data-type:` tag on an existing note's README if missing, inserting it
+     * immediately after the H1 heading and preserving the rest of the file verbatim. The kind is
+     * inferred from the presence of chat message headings. Returns true if the file was rewritten.
+     */
+    suspend fun ensureDataTypeTag(workspaceUri: String, folderUri: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val folder = resolveFolder(workspaceUri, folderUri) ?: return@withContext false
+            val readme = folder.findFile("README.md") ?: return@withContext false
+            val md = readText(readme.uri)
+            if (md.isBlank()) return@withContext false
+            val lines = md.replace("\r\n", "\n").split("\n")
+            if (lines.any { it.trim().startsWith("Data-type:", ignoreCase = true) }) {
+                return@withContext false // already tagged
+            }
+            val isChat = lines.any { Regex("""^##\s*\[[^\]]+]""").containsMatchIn(it) }
+            val tag = if (isChat) "Data-type: chat" else "Data-type: classic-note"
+
+            val h1Index = lines.indexOfFirst { it.startsWith("# ") }
+            val out = StringBuilder()
+            if (h1Index < 0) {
+                // No heading: prepend the tag at the very top.
+                out.append(tag).append("\n\n").append(md.trimEnd()).append("\n")
+            } else {
+                // Rebuild: everything up to and including the H1, then a blank line, the tag,
+                // a blank line, then the remainder with any leading blank lines collapsed.
+                val head = lines.take(h1Index + 1)
+                val rest = lines.drop(h1Index + 1).dropWhile { it.isBlank() }
+                head.forEach { out.append(it).append("\n") }
+                out.append("\n").append(tag).append("\n\n")
+                rest.forEach { out.append(it).append("\n") }
+            }
+            writeReadme(folder, out.toString().trimEnd() + "\n")
+            true
+        }
+
     // ---- chat --------------------------------------------------------------
 
     /** Creates an empty chat-kind note folder with a README containing only the header. */

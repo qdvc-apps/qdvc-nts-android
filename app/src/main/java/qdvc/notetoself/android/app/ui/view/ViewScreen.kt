@@ -1,5 +1,7 @@
 package qdvc.notetoself.android.app.ui.view
 
+import qdvc.notetoself.android.app.ui.components.topOnlyInsets
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,6 +41,7 @@ import qdvc.notetoself.android.app.model.Note
 @Composable
 fun ViewScreen(note: Note?, fontSize: Float, onEdit: () -> Unit) {
     Scaffold(
+        contentWindowInsets = topOnlyInsets,
         topBar = {
             TopAppBar(
                 title = { Text(note?.displayTitle ?: "View", maxLines = 1) },

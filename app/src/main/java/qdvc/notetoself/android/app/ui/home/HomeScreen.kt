@@ -39,6 +39,7 @@ import qdvc.notetoself.android.app.data.index.NoteHit
 import qdvc.notetoself.android.app.model.BrowseMode
 import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.Workspace
+import qdvc.notetoself.android.app.ui.components.topOnlyInsets
 import qdvc.notetoself.android.app.ui.components.EmptyState
 import qdvc.notetoself.android.app.ui.components.ListRow
 import qdvc.notetoself.android.app.ui.components.hierarchySlide
@@ -74,6 +75,7 @@ fun HomeScreen(
     val hasWorkspace = workspaces.isNotEmpty()
 
     Scaffold(
+        contentWindowInsets = topOnlyInsets,
         topBar = {
             TopAppBar(
                 title = { Text(title) },

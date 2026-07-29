@@ -39,6 +39,8 @@ class IndexRepository(
         var processed = 0
         for (entry in folders) {
             seen.add(entry.folderUri)
+            // One-time backfill: ensure every note's README carries a Data-type tag.
+            notes.ensureDataTypeTag(workspaceUri, entry.folderUri)
             val existing = known[entry.folderUri]
             if (existing == null || existing.lastModified != entry.lastModified) {
                 val note = notes.readNote(workspaceUri, entry.folderUri)

@@ -9,6 +9,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +35,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -112,9 +117,9 @@ fun ListRow(
                 } else {
                     buildAnnotatedString {
                         append(title)
-                        pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
-                        append(italicSuffix)
-                        pop()
+                        withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                            append(italicSuffix)
+                        }
                     }
                 }
                 Text(titleText, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -173,3 +178,11 @@ fun hierarchySlide(target: Int, initial: Int): ContentTransform {
         sizeTransform = SizeTransform(clip = false) { _, _ -> snap() },
     )
 }
+
+/**
+ * Inner-screen Scaffolds sit inside the app's outer Scaffold, which already positions content
+ * above the bottom navigation bar. So inner Scaffolds must take ONLY the top (status-bar) inset;
+ * taking the bottom system-bar inset too would leave a ~nav-bar-height gap above the nav bar.
+ */
+val topOnlyInsets: WindowInsets
+    @Composable get() = WindowInsets.systemBars.only(WindowInsetsSides.Top)

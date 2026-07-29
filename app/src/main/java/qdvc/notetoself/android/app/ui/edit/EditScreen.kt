@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import qdvc.notetoself.android.app.model.Category
+import qdvc.notetoself.android.app.ui.components.topOnlyInsets
 import qdvc.notetoself.android.app.ui.components.hierarchySlide
 import qdvc.notetoself.android.app.model.EditDraft
 import java.text.SimpleDateFormat
@@ -75,6 +76,8 @@ fun EditScreen(
     onRemoveNewImage: (Int) -> Unit,
     onSave: () -> Unit,
     onDelete: () -> Unit,
+    /** When false, the form renders without its own top bar (host supplies one, e.g. New tab). */
+    showTopBar: Boolean = true,
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
@@ -103,6 +106,7 @@ fun EditScreen(
                 fontSize = fontSize,
                 canSave = canSave,
                 stamp = stamp,
+                showTopBar = showTopBar,
                 onTitle = onTitle,
                 onAbstract = onAbstract,
                 onPayload = onPayload,
@@ -195,6 +199,7 @@ private fun EditForm(
     fontSize: Float,
     canSave: Boolean,
     stamp: SimpleDateFormat,
+    showTopBar: Boolean,
     onTitle: (String) -> Unit,
     onAbstract: (String) -> Unit,
     onPayload: (String) -> Unit,
@@ -206,7 +211,26 @@ private fun EditForm(
     onSave: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    if (!showTopBar) {
+        // Hosted (New tab): no Scaffold/top bar; the host supplies the bar + save action.
+        EditFormFields(
+            modifier = Modifier.fillMaxSize(),
+            draft = draft,
+            fontSize = fontSize,
+            stamp = stamp,
+            onTitle = onTitle,
+            onAbstract = onAbstract,
+            onPayload = onPayload,
+            onOpenCategoryPicker = onOpenCategoryPicker,
+            onOpenDatePicker = onOpenDatePicker,
+            onPickImage = onPickImage,
+            onRemoveKeepImage = onRemoveKeepImage,
+            onRemoveNewImage = onRemoveNewImage,
+        )
+        return
+    }
     Scaffold(
+        contentWindowInsets = topOnlyInsets,
         topBar = {
             TopAppBar(
                 title = { Text(if (draft.isNew) "New note" else "Edit note", maxLines = 1) },
@@ -225,15 +249,48 @@ private fun EditForm(
             )
         },
     ) { padding ->
-        Column(
-            Modifier
+        EditFormFields(
+            modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .imePadding()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+                .padding(padding),
+            draft = draft,
+            fontSize = fontSize,
+            stamp = stamp,
+            onTitle = onTitle,
+            onAbstract = onAbstract,
+            onPayload = onPayload,
+            onOpenCategoryPicker = onOpenCategoryPicker,
+            onOpenDatePicker = onOpenDatePicker,
+            onPickImage = onPickImage,
+            onRemoveKeepImage = onRemoveKeepImage,
+            onRemoveNewImage = onRemoveNewImage,
+        )
+    }
+}
+
+/** The scrollable field stack shared by the standalone Edit surface and the New-tab classic form. */
+@Composable
+internal fun EditFormFields(
+    modifier: Modifier = Modifier,
+    draft: EditDraft,
+    fontSize: Float,
+    stamp: SimpleDateFormat,
+    onTitle: (String) -> Unit,
+    onAbstract: (String) -> Unit,
+    onPayload: (String) -> Unit,
+    onOpenCategoryPicker: () -> Unit,
+    onOpenDatePicker: () -> Unit,
+    onPickImage: () -> Unit,
+    onRemoveKeepImage: (String) -> Unit,
+    onRemoveNewImage: (Int) -> Unit,
+) {
+    Column(
+        modifier
+            .verticalScroll(rememberScrollState())
+            .imePadding()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
             // ===== MANDATORY =====
             SectionHeader("Mandatory", fontSize)
             OutlinedTextField(
@@ -302,7 +359,6 @@ private fun EditForm(
                 }
                 Text("  $label", fontSize = fontSize.sp)
             }
-        }
     }
 }
 

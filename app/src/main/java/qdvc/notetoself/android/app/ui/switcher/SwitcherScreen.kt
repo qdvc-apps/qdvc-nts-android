@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.OpenNote
+import qdvc.notetoself.android.app.ui.components.topOnlyInsets
 import qdvc.notetoself.android.app.ui.components.EmptyState
 import kotlin.math.roundToInt
 
@@ -64,6 +65,7 @@ fun SwitcherScreen(
     var reordering by remember { mutableStateOf(false) }
 
     Scaffold(
+        contentWindowInsets = topOnlyInsets,
         topBar = {
             TopAppBar(
                 title = { Text("Open notes") },

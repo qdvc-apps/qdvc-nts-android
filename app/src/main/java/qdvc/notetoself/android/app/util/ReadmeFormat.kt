@@ -74,6 +74,7 @@ object ReadmeFormat {
     ): String {
         val sb = StringBuilder()
         sb.append("# ").append(heading(datePrefix, title)).append("\n\n")
+        sb.append("Data-type: classic-note\n\n")
         sb.append("Recorded ").append(recordedAt)
             .append(" (").append(isoStamp(Date(recordedAtMillis))).append(")").append("\n\n")
         if (category != Category.NONE) {
@@ -116,6 +117,7 @@ object ReadmeFormat {
     ): String {
         val sb = StringBuilder()
         sb.append("# ").append(heading(datePrefix, title)).append("\n\n")
+        sb.append("Data-type: chat\n\n")
         if (category != Category.NONE) {
             sb.append("Category: ").append(category.key).append("\n\n")
         }
@@ -157,7 +159,15 @@ object ReadmeFormat {
 
     fun parse(md: String, datePrefix: String): Parsed {
         val lines = md.replace("\r\n", "\n").split("\n")
-        val isChat = lines.any { chatHeading.matches(it) }
+        // The Data-type tag (if present) is authoritative; else fall back to detecting chat
+        // message headings; else classic.
+        val declared = lines.firstOrNull { it.trim().startsWith("Data-type:", ignoreCase = true) }
+            ?.substringAfter(":")?.trim()?.lowercase()
+        val isChat = when (declared) {
+            "chat" -> true
+            "classic-note" -> false
+            else -> lines.any { chatHeading.matches(it) }
+        }
         return if (isChat) parseChat(lines, datePrefix) else parseClassic(lines, datePrefix)
     }
 

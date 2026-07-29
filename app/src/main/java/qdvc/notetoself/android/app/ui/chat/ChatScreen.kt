@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -50,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import qdvc.notetoself.android.app.ui.components.topOnlyInsets
 import qdvc.notetoself.android.app.model.ChatMessage
 import qdvc.notetoself.android.app.model.Note
 import qdvc.notetoself.android.app.model.Persona
@@ -76,6 +76,9 @@ fun ChatScreen(
     val hashViolation = input.split("\n").any { it.trimStart().startsWith("#") }
 
     Scaffold(
+        // Take only the top (status-bar) inset; the app's bottom nav bar owns the bottom inset,
+        // so the composer must not add it again (would leave a gap above the nav bar).
+        contentWindowInsets = topOnlyInsets,
         topBar = {
             TopAppBar(
                 title = {
@@ -149,7 +152,6 @@ fun ChatScreen(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .imePadding()
                 .padding(horizontal = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -290,7 +292,6 @@ private fun MessageComposer(
         Row(
             Modifier
                 .fillMaxWidth()
-                .imePadding()
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
