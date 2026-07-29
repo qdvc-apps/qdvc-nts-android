@@ -61,6 +61,26 @@ data class OpenNote(
 /** Which text surface a font/size setting applies to. */
 enum class FontContext { VIEW, EDIT }
 
+/** Draft used by the Edit surface (both new and existing notes). */
+data class EditDraft(
+    val isNew: Boolean = true,
+    val note: Note? = null,
+    val title: String = "",
+    val abstract: String = "",
+    val textPayload: String = "",
+    /** Existing image file names to keep. */
+    val keepImages: List<String> = emptyList(),
+    /** Newly picked images to copy: (displayName, sourceUri). */
+    val newImages: List<Pair<String, String>> = emptyList(),
+) {
+    fun matchesSaved(): Boolean {
+        val n = note ?: return title.isBlank() && abstract.isBlank() &&
+            textPayload.isBlank() && newImages.isEmpty()
+        return title == n.title && abstract == n.abstract && textPayload == n.textPayload &&
+            newImages.isEmpty() && keepImages.toSet() == n.images.map { it.fileName }.toSet()
+    }
+}
+
 object Slug {
     private val nonWord = Regex("[^a-z0-9]+")
     private val edges = Regex("(^-+)|(-+$)")

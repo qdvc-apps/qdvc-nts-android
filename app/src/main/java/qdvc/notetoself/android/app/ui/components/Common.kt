@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -128,14 +127,20 @@ fun EmptyState(message: String) {
 /** The one hierarchy-slide spec, reused everywhere (B7). Snaps size to avoid diagonal drift. */
 fun hierarchySlide(target: Int, initial: Int): ContentTransform {
     val deeper = target > initial
-    val spec = if (deeper) {
-        (slideInHorizontally(tween(280)) { it } + fadeIn()) togetherWith
-            (slideOutHorizontally(tween(280)) { -it / 4 } + fadeOut())
+    val enter = if (deeper) {
+        slideInHorizontally(tween(280)) { it } + fadeIn()
     } else {
-        (slideInHorizontally(tween(280)) { -it / 4 } + fadeIn()) togetherWith
-            (slideOutHorizontally(tween(280)) { it } + fadeOut())
+        slideInHorizontally(tween(280)) { -it / 4 } + fadeIn()
+    }
+    val exit = if (deeper) {
+        slideOutHorizontally(tween(280)) { -it / 4 } + fadeOut()
+    } else {
+        slideOutHorizontally(tween(280)) { it } + fadeOut()
     }
     // Snap the size so only the horizontal slide animates (avoids the B7 diagonal drift).
-    spec.sizeTransform = SizeTransform(clip = false) { _, _ -> snap() }
-    return spec
+    return ContentTransform(
+        targetContentEnter = enter,
+        initialContentExit = exit,
+        sizeTransform = SizeTransform(clip = false) { _, _ -> snap() },
+    )
 }

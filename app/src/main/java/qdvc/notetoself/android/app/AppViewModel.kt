@@ -17,6 +17,7 @@ import qdvc.notetoself.android.app.data.SettingsRepository
 import qdvc.notetoself.android.app.data.ThemeRepository
 import qdvc.notetoself.android.app.data.index.NoteHit
 import qdvc.notetoself.android.app.model.BrowseMode
+import qdvc.notetoself.android.app.model.EditDraft
 import qdvc.notetoself.android.app.model.FontContext
 import qdvc.notetoself.android.app.model.Note
 import qdvc.notetoself.android.app.model.OpenNote
@@ -32,26 +33,6 @@ data class HomeState(
     val searchResults: List<NoteHit> = emptyList(),
 ) {
     val depth: Int get() = mode.ordinal
-}
-
-/** Draft used by the Edit surface (both new and existing notes). */
-data class EditDraft(
-    val isNew: Boolean = true,
-    val note: Note? = null,
-    val title: String = "",
-    val abstract: String = "",
-    val textPayload: String = "",
-    /** Existing image file names to keep. */
-    val keepImages: List<String> = emptyList(),
-    /** Newly picked images to copy: (displayName, sourceUri). */
-    val newImages: List<Pair<String, String>> = emptyList(),
-) {
-    fun matchesSaved(): Boolean {
-        val n = note ?: return title.isBlank() && abstract.isBlank() &&
-            textPayload.isBlank() && newImages.isEmpty()
-        return title == n.title && abstract == n.abstract && textPayload == n.textPayload &&
-            newImages.isEmpty() && keepImages.toSet() == n.images.map { it.fileName }.toSet()
-    }
 }
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
