@@ -1,6 +1,7 @@
 package qdvc.notetoself.android.app.ui.edit
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import qdvc.notetoself.android.app.model.Category
+import qdvc.notetoself.android.app.ui.components.hierarchySlide
 import qdvc.notetoself.android.app.model.EditDraft
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -79,128 +81,39 @@ fun EditScreen(
     var showCategoryPicker by remember { mutableStateOf(false) }
     val stamp = remember { SimpleDateFormat("EEE dd MMM yyyy, HH:mm", Locale.US) }
 
-    // Category picker is a distinct page. System back closes it with no change (BackHandler).
-    if (showCategoryPicker) {
-        CategoryPickerScreen(
-            selected = draft.category,
-            onPick = { cat -> onCategory(cat); showCategoryPicker = false },
-            onBack = { showCategoryPicker = false },
-        )
-        return
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(if (draft.isNew) "New note" else "Edit note", maxLines = 1) },
-                actions = {
-                    if (!draft.isNew) IconButton(onClick = onDelete) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
-                    }
-                    if (canSave) IconButton(onClick = onSave) {
-                        Icon(Icons.Filled.Check, contentDescription = "Save")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            )
+    // The category picker slides over the form (and back) using the shared hierarchy animation.
+    // System back closes it with no change via a BackHandler inside CategoryPickerScreen.
+    AnimatedContent(
+        targetState = showCategoryPicker,
+        transitionSpec = {
+            // depth 1 = picker, depth 0 = form; deeper slides in from the right.
+            hierarchySlide(if (targetState) 1 else 0, if (initialState) 1 else 0)
         },
-    ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .imePadding()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            OutlinedTextField(
-                value = draft.title,
-                onValueChange = onTitle,
-                label = { Text("Title (required)") },
-                isError = draft.title.isBlank(),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp),
-                modifier = Modifier.fillMaxWidth(),
+        label = "edit-category",
+    ) { picking ->
+        if (picking) {
+            CategoryPickerScreen(
+                selected = draft.category,
+                onPick = { cat -> onCategory(cat); showCategoryPicker = false },
+                onBack = { showCategoryPicker = false },
             )
-            OutlinedTextField(
-                value = draft.abstract,
-                onValueChange = onAbstract,
-                label = { Text("Abstract - why this matters") },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp),
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
+        } else {
+            EditForm(
+                draft = draft,
+                fontSize = fontSize,
+                canSave = canSave,
+                stamp = stamp,
+                onTitle = onTitle,
+                onAbstract = onAbstract,
+                onPayload = onPayload,
+                onOpenCategoryPicker = { showCategoryPicker = true },
+                onOpenDatePicker = { showDatePicker = true },
+                onPickImage = onPickImage,
+                onRemoveKeepImage = onRemoveKeepImage,
+                onRemoveNewImage = onRemoveNewImage,
+                onSave = onSave,
+                onDelete = onDelete,
             )
-
-            // ---- Date & time (with backdating) --------------------------------
-            Text(
-                "Recorded date & time",
-                fontSize = (fontSize + 1).sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            OutlinedButton(onClick = { showDatePicker = true }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.Schedule, contentDescription = null)
-                Text("  ${stamp.format(Date(draft.recordedAtMillis))}", fontSize = fontSize.sp)
-            }
-
-            // ---- Category -----------------------------------------------------
-            Text(
-                "Category",
-                fontSize = (fontSize + 1).sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            OutlinedButton(
-                onClick = { showCategoryPicker = true },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Filled.Sell, contentDescription = null)
-                val label = if (draft.category == Category.NONE) {
-                    "Set category\u2026"
-                } else {
-                    "${draft.category.emoji} ${draft.category.label}"
-                }
-                Text("  $label", fontSize = fontSize.sp)
-            }
-
-            OutlinedTextField(
-                value = draft.textPayload,
-                onValueChange = onPayload,
-                label = { Text("Payload - paste text, URLs, article body...") },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp),
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 4,
-            )
-
-            Text(
-                "Payload image(s)",
-                fontSize = (fontSize + 1).sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-
-            draft.keepImages.forEach { name ->
-                ImageRow(name) { onRemoveKeepImage(name) }
-            }
-            draft.newImages.forEachIndexed { i, (name, _) ->
-                ImageRow("$name  (new)") { onRemoveNewImage(i) }
-            }
-            if (draft.keepImages.isEmpty() && draft.newImages.isEmpty()) {
-                Text(
-                    "No images attached.",
-                    fontSize = (fontSize - 2).sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            OutlinedButton(onClick = onPickImage, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null)
-                Text("  Attach image", fontSize = fontSize.sp)
-            }
         }
     }
 
@@ -275,6 +188,146 @@ fun EditScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EditForm(
+    draft: EditDraft,
+    fontSize: Float,
+    canSave: Boolean,
+    stamp: SimpleDateFormat,
+    onTitle: (String) -> Unit,
+    onAbstract: (String) -> Unit,
+    onPayload: (String) -> Unit,
+    onOpenCategoryPicker: () -> Unit,
+    onOpenDatePicker: () -> Unit,
+    onPickImage: () -> Unit,
+    onRemoveKeepImage: (String) -> Unit,
+    onRemoveNewImage: (Int) -> Unit,
+    onSave: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(if (draft.isNew) "New note" else "Edit note", maxLines = 1) },
+                actions = {
+                    if (!draft.isNew) IconButton(onClick = onDelete) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    }
+                    if (canSave) IconButton(onClick = onSave) {
+                        Icon(Icons.Filled.Check, contentDescription = "Save")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            // ===== MANDATORY =====
+            SectionHeader("Mandatory", fontSize)
+            OutlinedTextField(
+                value = draft.title,
+                onValueChange = onTitle,
+                label = { Text("Title (required)") },
+                isError = draft.title.isBlank(),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            FieldLabel("Payload text", fontSize)
+            OutlinedTextField(
+                value = draft.textPayload,
+                onValueChange = onPayload,
+                label = { Text("Paste text, URLs, article body...") },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp),
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 4,
+            )
+
+            FieldLabel("Payload image(s)", fontSize)
+            draft.keepImages.forEach { name ->
+                ImageRow(name) { onRemoveKeepImage(name) }
+            }
+            draft.newImages.forEachIndexed { i, (name, _) ->
+                ImageRow("$name  (new)") { onRemoveNewImage(i) }
+            }
+            if (draft.keepImages.isEmpty() && draft.newImages.isEmpty()) {
+                Text(
+                    "No images attached.",
+                    fontSize = (fontSize - 2).sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            OutlinedButton(onClick = onPickImage, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null)
+                Text("  Attach image", fontSize = fontSize.sp)
+            }
+
+            // ===== OPTIONAL =====
+            SectionHeader("Optional", fontSize)
+            OutlinedTextField(
+                value = draft.abstract,
+                onValueChange = onAbstract,
+                label = { Text("Abstract - why this matters") },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = fontSize.sp),
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2,
+            )
+
+            FieldLabel("Recorded date & time", fontSize)
+            OutlinedButton(onClick = onOpenDatePicker, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Schedule, contentDescription = null)
+                Text("  ${stamp.format(Date(draft.recordedAtMillis))}", fontSize = fontSize.sp)
+            }
+
+            FieldLabel("Category", fontSize)
+            OutlinedButton(onClick = onOpenCategoryPicker, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Sell, contentDescription = null)
+                val label = if (draft.category == Category.NONE) {
+                    "Set category\u2026"
+                } else {
+                    "${draft.category.emoji} ${draft.category.label}"
+                }
+                Text("  $label", fontSize = fontSize.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(text: String, fontSize: Float) {
+    Text(
+        text.uppercase(),
+        fontSize = (fontSize + 2).sp,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 4.dp),
+    )
+    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+}
+
+@Composable
+private fun FieldLabel(text: String, fontSize: Float) {
+    Text(
+        text,
+        fontSize = (fontSize + 1).sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onBackground,
+    )
+}
+
 @Composable
 private fun ImageRow(name: String, onRemove: () -> Unit) {
     Row(
@@ -295,7 +348,7 @@ private fun ImageRow(name: String, onRemove: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CategoryPickerScreen(
+internal fun CategoryPickerScreen(
     selected: Category,
     onPick: (Category) -> Unit,
     onBack: () -> Unit,

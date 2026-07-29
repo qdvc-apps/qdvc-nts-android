@@ -43,6 +43,9 @@ class IndexRepository(
             if (existing == null || existing.lastModified != entry.lastModified) {
                 val note = notes.readNote(workspaceUri, entry.folderUri)
                 if (note != null) {
+                    val body = if (note.kind == qdvc.notetoself.android.app.model.NoteKind.CHAT)
+                        note.messages.joinToString("\n") { it.text }
+                    else searchable(note.title, note.abstract, note.textPayload)
                     dao.upsert(
                         NoteEntity(
                             workspaceUri = workspaceUri,
@@ -51,7 +54,8 @@ class IndexRepository(
                             title = note.title,
                             lastModified = entry.lastModified,
                             categoryKey = note.category.key,
-                            content = searchable(note.title, note.abstract, note.textPayload),
+                            kind = note.kind.name.lowercase(),
+                            content = body,
                         )
                     )
                 }
@@ -74,7 +78,7 @@ class IndexRepository(
     suspend fun onSaved(
         workspaceUri: String, folderUri: String, folderName: String,
         title: String, abstract: String, payload: String, lastModified: Long,
-        categoryKey: String,
+        categoryKey: String, kind: String = "classic",
     ) {
         dao.upsert(
             NoteEntity(
@@ -84,6 +88,7 @@ class IndexRepository(
                 title = title,
                 lastModified = lastModified,
                 categoryKey = categoryKey,
+                kind = kind,
                 content = searchable(title, abstract, payload),
             )
         )

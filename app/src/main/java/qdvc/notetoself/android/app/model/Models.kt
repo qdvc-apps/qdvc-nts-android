@@ -10,6 +10,38 @@ enum class BrowseMode { NOTES, SEARCH, INDEX_STATUS }
 
 enum class ThemeMode { AUTOMATIC, LIGHT, DARK }
 
+/** Whether a note is the classic single-body form or a chat thread. */
+enum class NoteKind { CLASSIC, CHAT }
+
+/**
+ * A chat persona. [key] is the stable display name stored in the README level-2 headings;
+ * [initials] is the WhatsApp-style avatar placeholder.
+ */
+enum class Persona(val key: String, val initials: String) {
+    NOTE_TAKER("Note Taker", "NT"),
+    PEER_REVIEWER("Peer Reviewer", "PR");
+
+    companion object {
+        fun fromKey(key: String?): Persona =
+            entries.firstOrNull { it.key.equals(key?.trim(), ignoreCase = true) } ?: NOTE_TAKER
+    }
+}
+
+/** A single chat message within a chat-kind note. */
+data class ChatMessage(
+    /** Epoch millis of when the message was recorded (drives the [timestampDisplay]). */
+    val timestampMillis: Long,
+    /** Human-readable stamp stored in the heading, e.g. "Wed 29 Jul 2026 20:32:03 AWST". */
+    val timestampDisplay: String,
+    /** Persona display name, e.g. "Note Taker". */
+    val personaKey: String,
+    val text: String,
+    /** Optional attached image file name inside payloads/ (already prefixed). */
+    val imageFileName: String? = null,
+    /** Resolved content URI for the image, if available. */
+    val imageUri: String? = null,
+)
+
 /**
  * Optional category a note can be tagged against. [none] means untagged. The [emoji] doubles as
  * the note's list/detail icon, and [label] is the stored/displayed name. [key] is the stable
@@ -65,6 +97,12 @@ data class Note(
     val recordedAtMillis: Long,
     /** Optional category tag; NONE when untagged. */
     val category: Category = Category.NONE,
+    /** Classic note or chat thread. */
+    val kind: NoteKind = NoteKind.CLASSIC,
+    /** Chat messages (chat kind only). */
+    val messages: List<ChatMessage> = emptyList(),
+    /** Whether the chat is closed to new messages (chat kind only). */
+    val chatClosed: Boolean = false,
 ) {
     val displayTitle: String get() = title.ifBlank { folderName }
 }

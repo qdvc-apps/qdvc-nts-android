@@ -19,6 +19,8 @@ data class NoteEntity(
     val lastModified: Long,
     /** Stable category key ("none" when untagged) so the list icon needs no file re-read. */
     val categoryKey: String = "none",
+    /** "classic" or "chat" so the list can annotate chats without re-reading files. */
+    val kind: String = "classic",
     /** Full searchable body (title + abstract + payload). */
     val content: String,
 )

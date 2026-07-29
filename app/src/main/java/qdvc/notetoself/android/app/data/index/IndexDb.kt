@@ -15,6 +15,7 @@ data class NoteHit(
     val folderName: String,
     val title: String,
     val categoryKey: String,
+    val kind: String,
     val snippet: String,
 )
 
@@ -37,13 +38,13 @@ interface IndexDao {
     suspend fun count(ws: String): Int
 
     @Query(
-        "SELECT workspaceUri, folderUri, folderName, title, categoryKey, '' AS snippet " +
+        "SELECT workspaceUri, folderUri, folderName, title, categoryKey, kind, '' AS snippet " +
             "FROM notes WHERE workspaceUri = :ws ORDER BY folderName DESC"
     )
     suspend fun listAll(ws: String): List<NoteHit>
 
     @Query(
-        "SELECT n.workspaceUri, n.folderUri, n.folderName, n.title, n.categoryKey, " +
+        "SELECT n.workspaceUri, n.folderUri, n.folderName, n.title, n.categoryKey, n.kind, " +
             "snippet(notes_fts) AS snippet " +
             "FROM notes n JOIN notes_fts ON n.rowId = notes_fts.rowid " +
             "WHERE n.workspaceUri = :ws AND notes_fts MATCH :match"
@@ -51,7 +52,7 @@ interface IndexDao {
     suspend fun searchBody(ws: String, match: String): List<NoteHit>
 
     @Query(
-        "SELECT workspaceUri, folderUri, folderName, title, categoryKey, '' AS snippet " +
+        "SELECT workspaceUri, folderUri, folderName, title, categoryKey, kind, '' AS snippet " +
             "FROM notes WHERE workspaceUri = :ws AND (title LIKE :like OR folderName LIKE :like)"
     )
     suspend fun searchTitle(ws: String, like: String): List<NoteHit>
@@ -72,7 +73,7 @@ data class NoteStub(
 
 @Database(
     entities = [NoteEntity::class, NoteFts::class, WorkspaceMeta::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class IndexDatabase : RoomDatabase() {

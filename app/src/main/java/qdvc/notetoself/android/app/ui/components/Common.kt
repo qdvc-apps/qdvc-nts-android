@@ -27,6 +27,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -73,6 +77,8 @@ fun ListRow(
     showChevron: Boolean = false,
     /** When non-blank, this emoji is shown as the leading glyph instead of [icon]. */
     leadingEmoji: String = "",
+    /** When non-blank, appended after the title in italics, e.g. " (chat)". */
+    italicSuffix: String = "",
     onClick: (() -> Unit)? = null,
 ) {
     Column {
@@ -101,7 +107,17 @@ fun ListRow(
             Column(modifier = Modifier
                 .weight(1f)
                 .padding(start = 16.dp)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                val titleText = if (italicSuffix.isBlank()) {
+                    AnnotatedString(title)
+                } else {
+                    buildAnnotatedString {
+                        append(title)
+                        pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
+                        append(italicSuffix)
+                        pop()
+                    }
+                }
+                Text(titleText, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (subtitle != null) Text(
                     subtitle,
                     style = MaterialTheme.typography.bodySmall,

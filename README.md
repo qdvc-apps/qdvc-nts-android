@@ -55,6 +55,15 @@ Attached images: [screenshot-zoo.png](payloads/screenshot-zoo.png); [IMG_1234.HE
    the note's icon in the list and switcher and is shown when the note is open:
    ⚠️ Action required · 📘 Ideas and planning · ☎️ Meeting notes · 📗 Useful
    article. The tag is stored as a stable `Category:` key in the README.
+6. **Chats** — as an alternative to a classic note, a note can be a chat: a
+   running thread of timestamped messages (text and/or images) you send to
+   yourself. Messages are shown in a Signal/WhatsApp-style bubble UI, can be
+   edited, and are anchored left/right by the active **persona** (Note Taker,
+   Peer Reviewer, …). A chat can be closed (no further messages) and reopened.
+   Chats appear in the list with an italic _(chat)_ suffix. A chat is stored in
+   `README.md` with each message under a `## [<stamp>] <Persona>` heading and
+   images as `[Image](payloads/<yyyy-MM-dd_HHmm><slot>_<name>)` links; message
+   lines may not begin with `#` (that would clash with the heading structure).
 
 All colour themes are **greyscale**, so category emojis stand out as the only
 colour in the UI.

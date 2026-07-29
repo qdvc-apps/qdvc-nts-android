@@ -7,7 +7,9 @@ import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import qdvc.notetoself.android.app.model.Category
+import qdvc.notetoself.android.app.model.ChatMessage
 import qdvc.notetoself.android.app.model.Note
+import qdvc.notetoself.android.app.model.NoteKind
 import qdvc.notetoself.android.app.model.PayloadImage
 import qdvc.notetoself.android.app.model.Slug
 import qdvc.notetoself.android.app.util.ReadmeFormat
@@ -80,6 +82,11 @@ class NoteRepository(private val context: Context) {
                 ?: runCatching { ReadmeFormat.parseDatePrefix(datePrefix) }.getOrNull()
                 ?: folderDoc.lastModified()
 
+            // Resolve image URIs for chat messages against the payloads dir.
+            val messages = parsed.messages.map { m ->
+                m.copy(imageUri = m.imageFileName?.let { diskImages[it] })
+            }
+
             Note(
                 workspaceUri = workspaceUri,
                 folderDocId = DocumentsContract.getDocumentId(folderDoc.uri),
@@ -94,6 +101,9 @@ class NoteRepository(private val context: Context) {
                 recordedAt = parsed.recordedAt.ifBlank { name },
                 recordedAtMillis = millis,
                 category = parsed.category,
+                kind = parsed.kind,
+                messages = messages,
+                chatClosed = parsed.chatClosed,
             )
         }
 
@@ -243,6 +253,127 @@ class NoteRepository(private val context: Context) {
 
     suspend fun deleteNote(note: Note): Boolean = withContext(Dispatchers.IO) {
         resolveFolder(note.workspaceUri, note.folderUri)?.delete() ?: false
+    }
+
+    // ---- chat --------------------------------------------------------------
+
+    /** Creates an empty chat-kind note folder with a README containing only the header. */
+    suspend fun createChat(
+        workspaceUri: String,
+        title: String,
+        category: Category,
+        now: Date = Date(),
+    ): Note? = withContext(Dispatchers.IO) {
+        val root = treeRoot(workspaceUri) ?: return@withContext null
+        val datePrefix = ReadmeFormat.datePrefix(now)
+        val folderName = uniqueFolderName(root, Slug.folderName(datePrefix, title))
+        val folder = root.createDirectory(folderName) ?: return@withContext null
+
+        val md = ReadmeFormat.buildChat(datePrefix, title, category, closed = false, messages = emptyList())
+        writeReadme(folder, md)
+
+        Note(
+            workspaceUri = workspaceUri,
+            folderDocId = DocumentsContract.getDocumentId(folder.uri),
+            folderUri = folder.uri.toString(),
+            folderName = folderName,
+            title = title,
+            abstract = "",
+            textPayload = "",
+            images = emptyList(),
+            recordedAt = "",
+            recordedAtMillis = now.time,
+            category = category,
+            kind = NoteKind.CHAT,
+            messages = emptyList(),
+            chatClosed = false,
+        )
+    }
+
+    /**
+     * Appends a message to a chat. If [imageSourceUri] is provided the image is copied into
+     * payloads/ with a `yyyy-MM-dd_HHmm<slot>_` prefix. Returns the reloaded note.
+     */
+    suspend fun appendChatMessage(
+        note: Note,
+        personaKey: String,
+        text: String,
+        imageSourceUri: String?,
+        imageDisplayName: String?,
+        now: Date = Date(),
+    ): Note? = withContext(Dispatchers.IO) {
+        val folder = resolveFolder(note.workspaceUri, note.folderUri) ?: return@withContext null
+
+        var imageFileName: String? = null
+        if (imageSourceUri != null) {
+            imageFileName = copyChatImage(folder, imageSourceUri, imageDisplayName ?: "image", now)
+        }
+
+        val message = ChatMessage(
+            timestampMillis = now.time,
+            timestampDisplay = ReadmeFormat.messageStamp(now),
+            personaKey = personaKey,
+            text = text,
+            imageFileName = imageFileName,
+        )
+        val newMessages = note.messages + message
+        rewriteChat(folder, note, newMessages, note.chatClosed)
+        readNote(note.workspaceUri, folder.uri.toString())
+    }
+
+    /** Replaces the text of the message at [index] (image unchanged). */
+    suspend fun editChatMessage(note: Note, index: Int, newText: String): Note? =
+        withContext(Dispatchers.IO) {
+            val folder = resolveFolder(note.workspaceUri, note.folderUri) ?: return@withContext null
+            if (index !in note.messages.indices) return@withContext note
+            val updated = note.messages.toMutableList().also {
+                it[index] = it[index].copy(text = newText)
+            }
+            rewriteChat(folder, note, updated, note.chatClosed)
+            readNote(note.workspaceUri, folder.uri.toString())
+        }
+
+    suspend fun setChatClosed(note: Note, closed: Boolean): Note? = withContext(Dispatchers.IO) {
+        val folder = resolveFolder(note.workspaceUri, note.folderUri) ?: return@withContext null
+        rewriteChat(folder, note, note.messages, closed)
+        readNote(note.workspaceUri, folder.uri.toString())
+    }
+
+    private fun rewriteChat(
+        folder: DocumentFile,
+        note: Note,
+        messages: List<ChatMessage>,
+        closed: Boolean,
+    ) {
+        val datePrefix = note.folderName.take(10)
+        val md = ReadmeFormat.buildChat(datePrefix, note.title, note.category, closed, messages)
+        writeReadme(folder, md)
+    }
+
+    /** Copies a chat image into payloads/, applying the timestamp+slot prefix and returning its name. */
+    private fun copyChatImage(
+        folder: DocumentFile,
+        sourceUri: String,
+        displayName: String,
+        now: Date,
+    ): String? {
+        val payloads = folder.findFile("payloads")?.takeIf { it.isDirectory }
+            ?: folder.createDirectory("payloads") ?: return null
+        // Find a free letter slot (a..z) for this minute so same-named images don't collide.
+        var slot = 0
+        var candidate: String
+        do {
+            candidate = ReadmeFormat.imagePrefix(now, slot) + displayName
+            slot++
+        } while (payloads.findFile(candidate) != null && slot < 26)
+        return try {
+            val mime = resolver.getType(Uri.parse(sourceUri)) ?: "application/octet-stream"
+            val dest = payloads.createFile(mime, candidate) ?: return null
+            resolver.openInputStream(Uri.parse(sourceUri))?.use { input ->
+                resolver.openOutputStream(dest.uri, "wt")?.use { output -> input.copyTo(output) }
+            }
+            dest.name ?: candidate
+        } catch (_: Exception) { null }
     }
 
     // ---- internals ---------------------------------------------------------

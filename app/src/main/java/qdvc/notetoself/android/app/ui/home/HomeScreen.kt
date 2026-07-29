@@ -64,7 +64,7 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
 ) {
     val title = when (mode) {
-        BrowseMode.NOTES -> "Notes"
+        BrowseMode.NOTES -> "QDVC Note to Self"
         BrowseMode.SEARCH -> "Search"
         BrowseMode.INDEX_STATUS -> "Index status"
     }
@@ -185,6 +185,7 @@ private fun NoteListLevel(
                 icon = Icons.Filled.Description,
                 leadingEmoji = Category.fromKey(hit.categoryKey).emoji,
                 title = hit.title.ifBlank { hit.folderName },
+                italicSuffix = if (hit.kind == "chat") " (chat)" else "",
                 subtitle = hit.folderName.take(10),
                 showChevron = true,
                 onClick = { onOpen(hit) },
@@ -222,6 +223,7 @@ private fun SearchLevel(
                 icon = Icons.Filled.Description,
                 leadingEmoji = Category.fromKey(hit.categoryKey).emoji,
                 title = hit.title.ifBlank { hit.folderName },
+                italicSuffix = if (hit.kind == "chat") " (chat)" else "",
                 subtitle = hit.snippet.ifBlank { hit.folderName.take(10) },
                 showChevron = true,
                 onClick = { onOpen(hit) },

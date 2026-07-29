@@ -35,9 +35,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import qdvc.notetoself.android.app.model.BrowseMode
 import qdvc.notetoself.android.app.model.Tab
+import qdvc.notetoself.android.app.ui.chat.ChatScreen
 import qdvc.notetoself.android.app.ui.components.NtsBottomBar
 import qdvc.notetoself.android.app.ui.components.TabSpec
 import qdvc.notetoself.android.app.ui.edit.EditScreen
+import qdvc.notetoself.android.app.ui.edit.NewNoteScreen
 import qdvc.notetoself.android.app.ui.home.HomeScreen
 import qdvc.notetoself.android.app.ui.settings.SettingsScreen
 import qdvc.notetoself.android.app.ui.switcher.SwitcherScreen
@@ -84,6 +86,10 @@ private fun AppContent(vm: AppViewModel) {
     val themeMode by vm.themeMode.collectAsState()
     val lightId by vm.lightThemeId.collectAsState()
     val darkId by vm.darkThemeId.collectAsState()
+    val newNoteKind by vm.newNoteKind.collectAsState()
+    val chatDraftTitle by vm.chatDraftTitle.collectAsState()
+    val chatDraftCategory by vm.chatDraftCategory.collectAsState()
+    val persona by vm.persona.collectAsState()
 
     var showSettings by remember { mutableStateOf(false) }
     var confirmClose by remember { mutableStateOf<qdvc.notetoself.android.app.model.OpenNote?>(null) }
@@ -95,7 +101,7 @@ private fun AppContent(vm: AppViewModel) {
         ActivityResultContracts.OpenDocumentTree(),
     ) { uri -> if (uri != null) vm.addWorkspace(uri) }
 
-    // Image picker for payloads.
+    // Image picker for classic-note payloads.
     val pickImage = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -107,6 +113,21 @@ private fun AppContent(vm: AppViewModel) {
             }
             val name = queryDisplayName(context, uri)
             vm.addDraftImage(name, uri.toString())
+        }
+    }
+
+    // Image picker for chat messages: sends an image-only message immediately.
+    val pickChatImage = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
+            val name = queryDisplayName(context, uri)
+            vm.sendChatMessage("", uri.toString(), name)
         }
     }
 
@@ -181,11 +202,27 @@ private fun AppContent(vm: AppViewModel) {
                     onRegenerate = vm::regenerateIndex,
                     onOpenSettings = { showSettings = true },
                 )
-                Tab.VIEW -> ViewScreen(
-                    note = currentNote,
-                    fontSize = viewFontSize,
-                    onEdit = { vm.editCurrentNote() },
-                )
+                Tab.VIEW -> {
+                    val cn = currentNote
+                    if (cn != null && cn.kind == qdvc.notetoself.android.app.model.NoteKind.CHAT) {
+                        ChatScreen(
+                            note = cn,
+                            persona = persona,
+                            fontSize = viewFontSize,
+                            onSend = { text -> vm.sendChatMessage(text, null, null) },
+                            onAttachImage = { pickChatImage.launch(arrayOf("image/*")) },
+                            onEditMessage = { i, t -> vm.editChatMessage(i, t) },
+                            onSetPersona = vm::setPersona,
+                            onToggleClosed = { vm.toggleChatClosed() },
+                        )
+                    } else {
+                        ViewScreen(
+                            note = cn,
+                            fontSize = viewFontSize,
+                            onEdit = { vm.editCurrentNote() },
+                        )
+                    }
+                }
                 Tab.EDIT -> EditScreen(
                     draft = draft,
                     fontSize = editFontSize,
@@ -211,11 +248,13 @@ private fun AppContent(vm: AppViewModel) {
                     },
                     onMove = vm::moveOpen,
                 )
-                // NEW is an action (startNewNote switches to EDIT); render Edit as a safe fallback.
-                Tab.NEW -> EditScreen(
+                // NEW hosts a top tab-bar: Classic note (full form) or Chat (title + category).
+                Tab.NEW -> NewNoteScreen(
+                    kind = newNoteKind,
+                    onKindChange = vm::setNewNoteKind,
                     draft = draft,
-                    fontSize = editFontSize,
-                    canSave = draft.title.isNotBlank() && !draft.matchesSaved(),
+                    editFontSize = editFontSize,
+                    classicCanSave = draft.title.isNotBlank() && !draft.matchesSaved(),
                     onTitle = { t -> vm.updateDraft { it.copy(title = t) } },
                     onAbstract = { a -> vm.updateDraft { it.copy(abstract = a) } },
                     onPayload = { p -> vm.updateDraft { it.copy(textPayload = p) } },
@@ -224,8 +263,12 @@ private fun AppContent(vm: AppViewModel) {
                     onPickImage = { pickImage.launch(arrayOf("image/*")) },
                     onRemoveKeepImage = vm::removeKeepImage,
                     onRemoveNewImage = vm::removeNewImage,
-                    onSave = { vm.saveDraft() },
-                    onDelete = { vm.deleteCurrent() },
+                    onSaveClassic = { vm.saveDraft() },
+                    chatTitle = chatDraftTitle,
+                    chatCategory = chatDraftCategory,
+                    onChatTitle = vm::setChatDraftTitle,
+                    onChatCategory = vm::setChatDraftCategory,
+                    onCreateChat = { vm.createChatNote() },
                 )
             }
         }

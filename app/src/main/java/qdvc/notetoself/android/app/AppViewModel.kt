@@ -21,7 +21,9 @@ import qdvc.notetoself.android.app.model.Category
 import qdvc.notetoself.android.app.model.EditDraft
 import qdvc.notetoself.android.app.model.FontContext
 import qdvc.notetoself.android.app.model.Note
+import qdvc.notetoself.android.app.model.NoteKind
 import qdvc.notetoself.android.app.model.OpenNote
+import qdvc.notetoself.android.app.model.Persona
 import qdvc.notetoself.android.app.model.Tab
 import qdvc.notetoself.android.app.model.ThemeMode
 import qdvc.notetoself.android.app.model.Workspace
@@ -64,6 +66,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _draft = MutableStateFlow(EditDraft())
     val draft: StateFlow<EditDraft> = _draft.asStateFlow()
+
+    /** Which entry form the New tab shows: classic note vs chat. */
+    private val _newNoteKind = MutableStateFlow(NoteKind.CLASSIC)
+    val newNoteKind: StateFlow<NoteKind> = _newNoteKind.asStateFlow()
+
+    /** Chat entry-form draft (only title + category). */
+    private val _chatDraftTitle = MutableStateFlow("")
+    val chatDraftTitle: StateFlow<String> = _chatDraftTitle.asStateFlow()
+    private val _chatDraftCategory = MutableStateFlow(Category.NONE)
+    val chatDraftCategory: StateFlow<Category> = _chatDraftCategory.asStateFlow()
+
+    /** Persona currently composing in the open chat (drives left/right bubble anchoring). */
+    private val _persona = MutableStateFlow(Persona.NOTE_TAKER)
+    val persona: StateFlow<Persona> = _persona.asStateFlow()
 
     // ---- appearance --------------------------------------------------------
 
@@ -152,10 +168,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val fromIndex = index.listAll(ws)
             val listing = fromIndex ?: run {
-                // Live-scan fallback (cold path, no index yet): read each note for its category.
+                // Live-scan fallback (cold path, no index yet): read each note for its category+kind.
                 notesRepo.scanNoteFolders(ws).map { entry ->
-                    val cat = notesRepo.readNote(ws, entry.folderUri)?.category ?: Category.NONE
-                    NoteHit(ws, entry.folderUri, entry.name, prettify(entry.name), cat.key, "")
+                    val n = notesRepo.readNote(ws, entry.folderUri)
+                    val cat = n?.category ?: Category.NONE
+                    val kind = (n?.kind ?: NoteKind.CLASSIC).name.lowercase()
+                    NoteHit(ws, entry.folderUri, entry.name, prettify(entry.name), cat.key, kind, "")
                 }
             }
             _home.value = _home.value.copy(listing = listing)
@@ -207,6 +225,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun selectNote(note: Note) {
         _currentNote.value = note
+        if (note.kind == NoteKind.CHAT) _persona.value = Persona.NOTE_TAKER
         _draft.value = EditDraft(
             isNew = false, note = note, title = note.title, abstract = note.abstract,
             textPayload = note.textPayload, keepImages = note.images.map { it.fileName },
@@ -252,7 +271,93 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Prepare a blank draft but keep the currently-viewed note intact so View (Tab 2)
         // stays usable. The NEW tab renders the Edit surface from this draft.
         _draft.value = EditDraft(isNew = true)
+        _chatDraftTitle.value = ""
+        _chatDraftCategory.value = Category.NONE
         _tab.value = Tab.NEW
+    }
+
+    fun setNewNoteKind(kind: NoteKind) { _newNoteKind.value = kind }
+    fun setChatDraftTitle(t: String) { _chatDraftTitle.value = t }
+    fun setChatDraftCategory(c: Category) { _chatDraftCategory.value = c }
+
+    /** Creates a chat note, opens it in the switcher, resets persona, and shows it in View (Tab 2). */
+    fun createChatNote() {
+        val ws = _home.value.activeWorkspace ?: return
+        val title = _chatDraftTitle.value.trim()
+        if (title.isBlank()) return
+        viewModelScope.launch {
+            val saved = notesRepo.createChat(ws, title, _chatDraftCategory.value) ?: return@launch
+            index.onSaved(
+                ws, saved.folderUri, saved.folderName, saved.title, "", "",
+                System.currentTimeMillis(), saved.category.key, saved.kind.name.lowercase(),
+            )
+            _persona.value = Persona.NOTE_TAKER
+            addOrRefreshOpen(saved)
+            _currentNote.value = saved
+            persistSession()
+            refreshListing()
+            _chatDraftTitle.value = ""
+            _chatDraftCategory.value = Category.NONE
+            _tab.value = Tab.VIEW
+        }
+    }
+
+    fun setPersona(p: Persona) { _persona.value = p }
+
+    /** Sends a message from the current persona into the open chat. */
+    fun sendChatMessage(text: String, imageSourceUri: String?, imageDisplayName: String?) {
+        val note = _currentNote.value ?: return
+        if (note.kind != NoteKind.CHAT || note.chatClosed) return
+        val body = text.trim()
+        if (body.isEmpty() && imageSourceUri == null) return
+        // Guard: no line may begin with '#', which would corrupt the chat heading structure.
+        if (qdvc.notetoself.android.app.util.ReadmeFormat.hasHashLine(body)) return
+        viewModelScope.launch {
+            val updated = notesRepo.appendChatMessage(
+                note, _persona.value.key, body, imageSourceUri, imageDisplayName,
+            ) ?: return@launch
+            afterChatMutation(updated)
+        }
+    }
+
+    fun editChatMessage(index: Int, newText: String) {
+        val note = _currentNote.value ?: return
+        if (note.kind != NoteKind.CHAT) return
+        if (qdvc.notetoself.android.app.util.ReadmeFormat.hasHashLine(newText.trim())) return
+        viewModelScope.launch {
+            val updated = notesRepo.editChatMessage(note, index, newText.trim()) ?: return@launch
+            afterChatMutation(updated)
+        }
+    }
+
+    fun toggleChatClosed() {
+        val note = _currentNote.value ?: return
+        if (note.kind != NoteKind.CHAT) return
+        viewModelScope.launch {
+            val updated = notesRepo.setChatClosed(note, !note.chatClosed) ?: return@launch
+            afterChatMutation(updated)
+        }
+    }
+
+    private fun afterChatMutation(updated: Note) {
+        _currentNote.value = updated
+        val ws = updated.workspaceUri
+        viewModelScope.launch {
+            index.onSaved(
+                ws, updated.folderUri, updated.folderName, updated.title,
+                "", updated.messages.joinToString("\n") { it.text },
+                System.currentTimeMillis(), updated.category.key, updated.kind.name.lowercase(),
+            )
+        }
+        refreshListing()
+    }
+
+    private fun addOrRefreshOpen(note: Note) {
+        val wsName = workspaces.value.firstOrNull { it.uri == note.workspaceUri }?.name ?: "workspace"
+        if (_openNotes.value.none { it.folderUri == note.folderUri }) {
+            _openNotes.value = _openNotes.value +
+                OpenNote(note.workspaceUri, note.folderUri, note.folderName, wsName, note.category.key)
+        }
     }
 
     /** Enter edit mode for the note currently shown in View (pencil action). */
@@ -334,7 +439,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 index.onSaved(
                     ws, saved.folderUri, saved.folderName, saved.title,
                     saved.abstract, saved.textPayload, System.currentTimeMillis(),
-                    saved.category.key,
+                    saved.category.key, saved.kind.name.lowercase(),
                 )
                 // Keep any matching open-note's category/name current (covers category-only edits).
                 _openNotes.value = _openNotes.value.map {
