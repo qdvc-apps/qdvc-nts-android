@@ -42,7 +42,7 @@ data class Note(
     val displayTitle: String get() = title.ifBlank { folderName }
 }
 
-/** A theme spec loaded from assets/themes/*.json. */
+/** A theme spec loaded from the themes asset folder. */
 data class ThemeSpec(
     val id: String,
     val name: String,
